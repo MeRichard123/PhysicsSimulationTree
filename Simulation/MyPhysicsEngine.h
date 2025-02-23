@@ -201,6 +201,7 @@ namespace PhysicsEngine
 			px_scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
 		}
 
+
 		//Custom scene initialisation
 		virtual void CustomInit()
 		{
@@ -223,6 +224,27 @@ namespace PhysicsEngine
 
 			Character* player2 = new Character(PxReal(1.75f), PxVec3(1.5f, 0, 0));
 			Add(player2, color_palette[0]);
+
+			StaticTreePart* treeBase;
+
+			// generate a tree Semi-mature
+			// https://johnsonsnurseries.co.uk/solutions/tree-size-guide/
+			// - add a material
+			float bottomRad = 0.3f; // 30cm Grirth
+			float topRad = bottomRad /= 1.2;
+			float posY = 0.5f; 
+
+			float height = 4.0f; // 400cm height
+
+			while (posY < height)
+			{
+				treeBase = new StaticTreePart(PxTransform(PxVec3(5.f, posY, 0.f)), bottomRad, topRad, 1.25f);
+				treeBase->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));  // Brown color (105,75,55)
+				Add(treeBase);
+				bottomRad = topRad;
+				topRad /= 1.2;
+				posY += 1.25f;
+			}
 
 			/*
 			//joint two boxes together

@@ -235,4 +235,88 @@ namespace PhysicsEngine {
             leftLegKneeJoint->SetLimits(-PxPi/2, 0, 0.01f);
         }
 	};
+
+    class StaticTreePart : public TriangleMesh
+    {
+    public: 
+        StaticTreePart(PxTransform pose = PxTransform(PxIdentity), PxReal baseRadius = 2.f, PxReal topRadius = 1.f, PxReal height = 1.f)
+            : TriangleMesh(GenerateTaperedCylinderVertices(baseRadius, topRadius, height, 16),
+                GenerateCylinderIndices(16), pose)
+        {
+        }
+    private:
+
+        std::vector<PxVec3> GenerateTaperedCylinderVertices(PxReal baseRadius, PxReal topRadius, PxReal height, int numSides)
+        {
+            std::vector<PxVec3> verts;
+            float angleStep = PxTwoPi / numSides;
+            float halfHeight = height / 2;
+
+            // Bottom circle (wider base)
+            for (int i = 0; i < numSides; i++)
+            {
+                float angle = i * angleStep;
+                float x = baseRadius * cos(angle);
+                float z = baseRadius * sin(angle);
+                verts.push_back(PxVec3(x, -halfHeight, z));
+            }
+
+            // Top circle (narrower top)
+            for (int i = 0; i < numSides; i++)
+            {
+                float angle = i * angleStep;
+                float x = topRadius * cos(angle);
+                float z = topRadius * sin(angle);
+                verts.push_back(PxVec3(x, halfHeight, z));
+            }
+
+            verts.push_back(PxVec3(0, -halfHeight, 0));
+            verts.push_back(PxVec3(0, halfHeight, 0));
+
+            return verts;
+        }
+
+        std::vector<PxU32> GenerateCylinderIndices(int numSides)
+        {
+            std::vector<PxU32> indices;
+            int bottomCenter = numSides * 2;
+            int topCenter = bottomCenter + 1;
+
+            // Connecting top and bottom vertices with triangles
+            for (int i = 0; i < numSides; i++)
+            {
+                int next = (i + 1) % numSides;
+
+                // Side triangles
+                indices.push_back(i);
+                indices.push_back(next);
+                indices.push_back(numSides + i);
+
+                indices.push_back(numSides + i);
+                indices.push_back(next);
+                indices.push_back(numSides + next);
+            }
+
+            //Add a Bottom Lid
+            for (int i = 0; i < numSides; i++)
+            {
+                int next = (i + 1) % numSides;
+                indices.push_back(i);
+                indices.push_back(bottomCenter);
+                indices.push_back(next);
+            }
+
+            // Top lid (connect each top vertex to the center)
+            for (int i = 0; i < numSides; i++)
+            {
+                int next = (i + 1) % numSides;
+                indices.push_back(numSides + i);
+                indices.push_back(numSides + next);
+                indices.push_back(topCenter);
+            }
+            return indices;
+        }
+    };
+
+
 }
