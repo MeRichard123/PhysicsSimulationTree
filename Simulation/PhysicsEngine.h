@@ -5,6 +5,7 @@
 #include "Exception.h"
 #include "Extras\UserData.h"
 #include <string>
+#include "extensions/PxExtensionsAPI.h"
 
 namespace PhysicsEngine
 {
@@ -30,6 +31,13 @@ namespace PhysicsEngine
 	PxMaterial* CreateMaterial(PxReal sf=.0f, PxReal df=.0f, PxReal cr=.0f);
 
 	static const PxVec3 default_color(.8f,.8f,.8f);
+
+	enum Entity {
+		ETree,
+		EHouse,
+		ECharacter
+	};
+
 
 	///Abstract Actor class
 	///Inherit from this class to create your own actors
@@ -128,7 +136,7 @@ namespace PhysicsEngine
 
 		///Add actors
 		void Add(Actor* actor);
-		void Add(DynamicActor* person, PxVec3 colour);
+		void Add(DynamicActor* person, PxVec3 colour, Entity entity);
 
 		///Get the PxScene object
 		PxScene* Get();

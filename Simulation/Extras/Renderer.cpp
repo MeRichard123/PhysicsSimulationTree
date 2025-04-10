@@ -73,6 +73,8 @@ namespace VisualDebugger
 			glPopMatrix();
 		}
 
+
+
 		void DrawConvexMesh(const PxGeometryHolder& geometry)
 		{
 			PxConvexMesh* mesh = geometry.convexMesh().convexMesh;

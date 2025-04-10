@@ -30,9 +30,11 @@
     <ClInclude Include="Extras\UserData.h" />
     <ClInclude Include="MyPhysicsEngine.h" />
     <ClInclude Include="PhysicsEngine.h" />
+    <ClInclude Include="SZ_Cylinder.h" />
     <ClInclude Include="VisualDebugger.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="SZ_Cylinder.cpp" />
     <ClCompile Include="Extras\Camera.cpp" />
     <ClCompile Include="Extras\GLFontRenderer.cpp" />
     <ClCompile Include="Extras\Renderer.cpp" />

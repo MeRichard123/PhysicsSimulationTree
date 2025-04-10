@@ -21,6 +21,7 @@ namespace PhysicsEngine
 	PxPhysics* physics = 0;
 	PxCooking* cooking = 0;
 
+
 	///PhysX functions
 	void PxInit()
 	{
@@ -65,8 +66,13 @@ namespace PhysicsEngine
 		if (!cooking)
 			throw new Exception("PhysicsEngine::PxInit, Could not initialise the cooking component.");
 
+
 		//create a deafult material
 		CreateMaterial();
+		if (physics) {
+			PxPhysics& phys = *physics;
+			PxInitExtensions(phys, pvd);
+		}
 	}
 
 	void PxRelease()
@@ -269,7 +275,7 @@ namespace PhysicsEngine
 			sceneDesc.cpuDispatcher = mCpuDispatcher;
 		}
 
-		sceneDesc.filterShader = PxDefaultSimulationFilterShader;
+		sceneDesc.filterShader = filter_shader;
 
 		px_scene = GetPhysics()->createScene(sceneDesc);
 
@@ -304,15 +310,46 @@ namespace PhysicsEngine
 		px_scene->addActor(*actor->Get());
 	}
 
-	void Scene::Add(DynamicActor* person, PxVec3 colour) {
-		for (Box* part : ((Character*)person)->GetParts())
+	void Scene::Add(DynamicActor* person, PxVec3 colour, Entity entity) 
+	{
+		switch (entity)
 		{
-			part->Color(colour);
-			px_scene->addActor(*part->Get());
+		case (Entity::ETree): {
+			for (StaticTreePart* part : ((Tree*)person)->getTrunkParts())
+			{
+				if (part) px_scene->addActor(*part->Get());
+			}
+
+			for (Box* part : ((Tree*)person)->getParts())
+			{
+				if (part) px_scene->addActor(*part->Get());
+			}
+			break;
 		}
-		Capsule* part = ((Character*)person)->GetHead();
-		part->Color(colour);
-		px_scene->addActor(*part->Get());
+
+		case (Entity::ECharacter): {
+			for (Box* part : ((Character*)person)->GetParts())
+			{
+				part->Color(colour);
+				px_scene->addActor(*part->Get());
+			}
+			Capsule* top_part = ((Character*)person)->GetHead();
+			top_part->Color(colour);
+			px_scene->addActor(*top_part->Get());
+			break;
+		}
+		case (Entity::EHouse): {
+			for (Box* part : ((House*)person)->getPlanks())
+			{
+				if (part)
+				{
+					part->Color(colour);
+					px_scene->addActor(*part->Get());
+				}
+			}
+			break;
+		}
+		}
 	}
 
 	PxScene* Scene::Get()

@@ -2,11 +2,14 @@
 
 #include "BasicActors.h"
 #include "CustomActors.h"
+#include "SZ_Cylinder.h"
 #include <iostream>
 #include <iomanip>
+#include <random>
 
 namespace PhysicsEngine
 {
+
 	using namespace std;
 
 	//a list of colours: Circus Palette
@@ -169,6 +172,12 @@ namespace PhysicsEngine
 		//customise collision filtering here
 		//e.g.
 
+
+		if (filterData0.word0 == filterData1.word0 && filterData0.word0 == 2) {
+			return PxFilterFlag::eSUPPRESS; 
+		}
+
+
 		// trigger the contact callback for pairs (A,B) where 
 		// the filtermask of A contains the ID of B and vice versa.
 		if((filterData0.word0 & filterData1.word1) && (filterData1.word0 & filterData0.word1))
@@ -190,15 +199,17 @@ namespace PhysicsEngine
 		MySimulationEventCallback* my_callback;
 		
 	public:
+		vector<SZ_Cylinder*> logs;
 		//specify your custom filter shader here
 		//PxDefaultSimulationFilterShader by default
-		MyScene() : Scene() {};
+		MyScene() : Scene(CustomFilterShader) {};
 
 		///A custom scene class
 		void SetVisualisation()
 		{
 			px_scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
 			px_scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
+			px_scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES, 1.0f);	
 		}
 
 
@@ -220,38 +231,21 @@ namespace PhysicsEngine
 
 			// Specify Height in Meters
 			Character* player = new Character(PxReal(1.75f));
-			Add(player, color_palette[0]);
+			Add(player, color_palette[0], Entity::ECharacter);
 
-			Character* player2 = new Character(PxReal(1.75f), PxVec3(1.5f, 0, 0));
-			Add(player2, color_palette[0]);
+			Tree* tree = new Tree();
+			Add(tree, color_palette[0], Entity::ETree);
 
-			StaticTreePart* treeBase;
+			//House* house = new House(PxTransform(PxVec3(10.0f, 10.0f, 10.0f)));
+			//Add(house, PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f), Entity::EHouse);
 
-			// generate a tree Semi-mature
-			// https://johnsonsnurseries.co.uk/solutions/tree-size-guide/
-			// - add a material
-			float bottomRad = 0.3f; // 30cm Grirth
-			float topRad = bottomRad /= 1.2;
-			float posY = 0.5f; 
-
-			float height = 4.0f; // 400cm height
-
-			while (posY < height)
-			{
-				treeBase = new StaticTreePart(PxTransform(PxVec3(5.f, posY, 0.f)), bottomRad, topRad, 1.25f);
-				treeBase->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));  // Brown color (105,75,55)
-				Add(treeBase);
-				bottomRad = topRad;
-				topRad /= 1.2;
-				posY += 1.25f;
+			Cabin* house = new Cabin(PxTransform(PxVec3(10.0f, 1.0f, 10.f)));
+			logs = house->GetLogs();
+			for (SZ_Cylinder* log : logs) {
+				Add(log);
 			}
+			Add(house->GetFloor());
 
-			/*
-			//joint two boxes together
-			//the joint is fixed to the centre of the first box, oriented by 90 degrees around the Y axis
-			//and has the second object attached 5 meters away along the Y axis from the first object.
-			RevoluteJoint joint(box, PxTransform(PxVec3(0.f,0.f,0.f),PxQuat(PxPi/2,PxVec3(0.f,1.f,0.f))), box2, PxTransform(PxVec3(0.f,5.f,0.f)));
-			*/
 		}
 
 		//Custom udpate function

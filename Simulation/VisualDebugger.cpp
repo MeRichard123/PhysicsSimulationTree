@@ -39,7 +39,7 @@ namespace VisualDebugger
 	///simulation objects
 	Camera* camera;
 	PhysicsEngine::MyScene* scene;
-	PxReal delta_time = 1.f/60.f;
+	PxReal delta_time = 1.f/90.f;
 	PxReal gForceStrength = 20;
 	RenderMode render_mode = NORMAL;
 	const int MAX_KEYS = 256;
@@ -160,6 +160,9 @@ namespace VisualDebugger
 
 		//render HUD
 		hud.Render();
+		for (auto log : scene->logs) {
+			log->Render();
+		}
 
 		//finish rendering
 		Renderer::Finish();
