@@ -174,6 +174,7 @@ namespace VisualDebugger
 	//user defined keyboard handlers
 	void UserKeyPress(int key)
 	{
+		std::cout << toupper(key) << std::endl;
 		switch (toupper(key))
 		{
 		//implement your own
@@ -298,6 +299,18 @@ namespace VisualDebugger
 		case GLUT_KEY_F12:
 			//resect scene
 			scene->Reset();
+			break;
+		case GLUT_KEY_LEFT:
+			scene->MovePlayerLeft();
+			break;
+		case GLUT_KEY_UP:
+			scene->MovePlayerUp();
+			break;
+		case GLUT_KEY_RIGHT:    
+			scene->MovePlayerRight();
+			break;
+		case GLUT_KEY_DOWN:                 
+			scene->MovePlayerDown();
 			break;
 		default:
 			break;

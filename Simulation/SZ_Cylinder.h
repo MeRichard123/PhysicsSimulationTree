@@ -13,11 +13,20 @@ namespace PhysicsEngine {
 		SZ_Cylinder(const PxTransform& pose, PxReal radius, PxReal halfHeight, PxReal density);
 
 		void Render();
+		static PxConvexMesh* CreateConvexCylinder(PxReal radius, PxReal halfHeight, int slices = 16);
 
 	private:
 		PxReal radius;
 		PxReal halfHeight;
 
-		PxConvexMesh* CreateConvexCylinder(PxReal radius, PxReal halfHeight, int slices = 16);
 	};
+
+	inline PxConvexMeshGeometry CylinderGeometry(PxReal rad, PxReal halfHeight)
+	{
+		int slices = 20;
+		PxConvexMesh* mesh = SZ_Cylinder::CreateConvexCylinder(rad, halfHeight, slices);
+		PxConvexMeshGeometry geometry(mesh);
+		return geometry;
+	}
+
 }

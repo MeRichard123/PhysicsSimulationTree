@@ -37,10 +37,11 @@ namespace PhysicsEngine {
 		return GetPhysics()->createConvexMesh(input);
 	}
 
+
 	SZ_Cylinder::SZ_Cylinder(const PxTransform& pose, PxReal radius, PxReal halfHeight, PxReal density)
 		: DynamicActor(pose), radius(radius), halfHeight(halfHeight)
 	{
-		PxConvexMesh* mesh = CreateConvexCylinder(radius, halfHeight);
+		PxConvexMesh* mesh = SZ_Cylinder::CreateConvexCylinder(radius, halfHeight);
 		if (mesh) {
 			PxConvexMeshGeometry geom(mesh);
 			CreateShape(geom, density);

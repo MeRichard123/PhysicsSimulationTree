@@ -315,7 +315,7 @@ namespace PhysicsEngine
 		switch (entity)
 		{
 		case (Entity::ETree): {
-			for (StaticTreePart* part : ((Tree*)person)->getTrunkParts())
+			for (DynamicTreePart* part : ((Tree*)person)->getTrunkParts())
 			{
 				if (part) px_scene->addActor(*part->Get());
 			}
@@ -338,17 +338,7 @@ namespace PhysicsEngine
 			px_scene->addActor(*top_part->Get());
 			break;
 		}
-		case (Entity::EHouse): {
-			for (Box* part : ((House*)person)->getPlanks())
-			{
-				if (part)
-				{
-					part->Color(colour);
-					px_scene->addActor(*part->Get());
-				}
-			}
-			break;
-		}
+
 		}
 	}
 

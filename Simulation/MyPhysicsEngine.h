@@ -197,6 +197,8 @@ namespace PhysicsEngine
 		Plane* plane;
 		Box* box, * box2;
 		MySimulationEventCallback* my_callback;
+		Character* player;
+		Cloth* curtain;
 		
 	public:
 		vector<SZ_Cylinder*> logs;
@@ -230,22 +232,93 @@ namespace PhysicsEngine
 			Add(plane);
 
 			// Specify Height in Meters
-			Character* player = new Character(PxReal(1.75f));
+			player = new Character(PxReal(1.75f));
 			Add(player, color_palette[0], Entity::ECharacter);
 
 			Tree* tree = new Tree();
 			Add(tree, color_palette[0], Entity::ETree);
 
-			//House* house = new House(PxTransform(PxVec3(10.0f, 10.0f, 10.0f)));
-			//Add(house, PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f), Entity::EHouse);
 
-			Cabin* house = new Cabin(PxTransform(PxVec3(10.0f, 1.0f, 10.f)));
-			logs = house->GetLogs();
-			for (SZ_Cylinder* log : logs) {
-				Add(log);
+			Cabin* house = new Cabin(PxTransform(PxVec3(10.0f, 10.0f, 0.f)));
+			house->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
+			for (int i = 41; i <= 65; ++i)
+			{
+				house->Color(PxVec3(0.2627450980392157f, 0.1568627450980392f, 0.09411764705882353f), i);
 			}
-			Add(house->GetFloor());
 
+			Add(house);
+
+			FixedJoint* joint = new FixedJoint(
+				tree->getTrunkParts()[tree->getTrunkParts().size() - 1],
+				PxTransform(PxVec3(5.0f, 5.0f, 0)),
+				house,
+				PxTransform(PxVec3(0, -1.0f, 0))
+			);
+
+			SZ_Cylinder* branch = new SZ_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
+			Add(branch);
+
+			FixedJoint* j = new FixedJoint(
+				tree->getTrunkParts()[tree->getTrunkParts().size() - 1],
+				PxTransform(PxVec3(5.0f, 4.0f, 0.0f)),
+				branch,
+				PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(2*(PxPi/3), PxVec3(1, 0,0)))
+			);
+			j->Get()->setBreakForce(9000000.0f, 9000000.0f);
+
+			SZ_Cylinder* branch1 = new SZ_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
+			Add(branch1);
+
+			FixedJoint* j1 = new FixedJoint(
+				tree->getTrunkParts()[tree->getTrunkParts().size() - 1],
+				PxTransform(PxVec3(5.0f, 3.0f, 0.0f)),
+				branch1,
+				PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(2 * (PxPi / 3), PxVec3(0, 0, 1)))
+			);
+			j1->Get()->setBreakForce(210000.0f, 210000.0f);
+
+			SZ_Cylinder* branch2 = new SZ_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
+			Add(branch2);
+
+			FixedJoint* j2 = new FixedJoint(
+				tree->getTrunkParts()[tree->getTrunkParts().size() - 1],
+				PxTransform(PxVec3(5.0f, 1.5f, 0.0f), PxQuat(PxPi, PxVec3(0, 0, 1))),
+				branch2,
+				PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(4*(PxPi / 3), PxVec3(0, 0, 1)) * PxQuat(PxPi, PxVec3(0, 0, 1)))
+			);
+			j2->Get()->setBreakForce(210000.0f, 210000.0f);
+		}
+
+		void MovePlayerLeft()
+		{
+			player->updatePosition(
+				PxVec3(-.5f, 0.0f, 0.0f), 
+				PxQuat(PxPi / 2, PxVec3(0.0f, 1.0f, 0.0f))
+			);
+		}
+
+		void MovePlayerRight()
+		{
+			player->updatePosition(
+				PxVec3(.5f, 0.0f, 0.0f),
+				PxQuat(-PxPi / 2, PxVec3(0.0f, 1.0f, 0.0f))
+			); 
+		}
+
+		void MovePlayerUp()
+		{
+			player->updatePosition(
+				PxVec3(0.0f, 0.0f, -0.5f),
+				PxQuat(0.0f, PxVec3(0.0f, 1.0f, 0.0f))
+			);
+		}
+
+		void MovePlayerDown()
+		{
+			player->updatePosition(
+				PxVec3(0.0f, 0.0f, 0.5f), 
+				PxQuat(0.0f, PxVec3(0.0f, 1.0f, 0.0f))
+			); 
 		}
 
 		//Custom udpate function
