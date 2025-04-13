@@ -44,50 +44,13 @@ namespace PhysicsEngine
 	{
 		enum Enum
 		{
-			ACTOR0		= (1 << 0),
-			ACTOR1		= (1 << 1),
+			GROUND		= (1 << 0),
+			HOUSE		= (1 << 1),
 			ACTOR2		= (1 << 2)
 			//add more if you need
 		};
 	};
 
-	///An example class showing the use of springs (distance joints).
-	class Trampoline
-	{
-		vector<DistanceJoint*> springs;
-		Box *bottom, *top;
-
-	public:
-		Trampoline(const PxVec3& dimensions=PxVec3(1.f,1.f,1.f), PxReal stiffness=1.f, PxReal damping=1.f)
-		{
-			PxReal thickness = .1f;
-			bottom = new Box(PxTransform(PxVec3(0.f,thickness,0.f)),PxVec3(dimensions.x,thickness,dimensions.z));
-			top = new Box(PxTransform(PxVec3(0.f,dimensions.y+thickness,0.f)),PxVec3(dimensions.x,thickness,dimensions.z));
-			springs.resize(4);
-			springs[0] = new DistanceJoint(bottom, PxTransform(PxVec3(dimensions.x,thickness,dimensions.z)), top, PxTransform(PxVec3(dimensions.x,-dimensions.y,dimensions.z)));
-			springs[1] = new DistanceJoint(bottom, PxTransform(PxVec3(dimensions.x,thickness,-dimensions.z)), top, PxTransform(PxVec3(dimensions.x,-dimensions.y,-dimensions.z)));
-			springs[2] = new DistanceJoint(bottom, PxTransform(PxVec3(-dimensions.x,thickness,dimensions.z)), top, PxTransform(PxVec3(-dimensions.x,-dimensions.y,dimensions.z)));
-			springs[3] = new DistanceJoint(bottom, PxTransform(PxVec3(-dimensions.x,thickness,-dimensions.z)), top, PxTransform(PxVec3(-dimensions.x,-dimensions.y,-dimensions.z)));
-
-			for (unsigned int i = 0; i < springs.size(); i++)
-			{
-				springs[i]->Stiffness(stiffness);
-				springs[i]->Damping(damping);
-			}
-		}
-
-		void AddToScene(Scene* scene)
-		{
-			scene->Add(bottom);
-			scene->Add(top);
-		}
-
-		~Trampoline()
-		{
-			for (unsigned int i = 0; i < springs.size(); i++)
-				delete springs[i];
-		}
-	};
 
 	///A customised collision class, implemneting various callbacks
 	class MySimulationEventCallback : public PxSimulationEventCallback
@@ -95,8 +58,9 @@ namespace PhysicsEngine
 	public:
 		//an example variable that will be checked in the main simulation loop
 		bool trigger;
+		bool fallen;
 
-		MySimulationEventCallback() : trigger(false) {}
+		MySimulationEventCallback() : trigger(false), fallen(false) {}
 
 		///Method called when the contact with the trigger object is detected.
 		virtual void onTrigger(PxTriggerPair* pairs, PxU32 count) 
@@ -135,6 +99,20 @@ namespace PhysicsEngine
 				if (pairs[i].events & PxPairFlag::eNOTIFY_TOUCH_FOUND)
 				{
 					cerr << "onContact::eNOTIFY_TOUCH_FOUND" << endl;
+					PxContactPairPoint contactPoints[64];
+					PxU32 nbContacts = pairs[i].extractContacts(contactPoints, 64);
+					PxReal maxImpluse = 0.0f;
+
+					for (PxU32 j = 0; j < nbContacts; ++j)
+					{
+						maxImpluse = PxMax(maxImpluse, contactPoints[j].impulse.magnitude());
+					}
+
+
+					if (maxImpluse > 0.0f)
+					{
+						fallen = true;
+					}
 				}
 				//check eNOTIFY_TOUCH_LOST
 				if (pairs[i].events & PxPairFlag::eNOTIFY_TOUCH_LOST)
@@ -152,7 +130,7 @@ namespace PhysicsEngine
 #endif
 	};
 
-	//A simple filter shader based on PxDefaultSimulationFilterShader - without group filtering
+	//A simple filter shader based on PxDefaultSimulationFilterShader 
 	static PxFilterFlags CustomFilterShader( PxFilterObjectAttributes attributes0,	PxFilterData filterData0,
 		PxFilterObjectAttributes attributes1,	PxFilterData filterData1,
 		PxPairFlags& pairFlags,	const void* constantBlock,	PxU32 constantBlockSize)
@@ -167,15 +145,6 @@ namespace PhysicsEngine
 		pairFlags = PxPairFlag::eCONTACT_DEFAULT;
 		//enable continous collision detection
 //		pairFlags |= PxPairFlag::eCCD_LINEAR;
-		
-		
-		//customise collision filtering here
-		//e.g.
-
-
-		if (filterData0.word0 == filterData1.word0 && filterData0.word0 == 2) {
-			return PxFilterFlag::eSUPPRESS; 
-		}
 
 
 		// trigger the contact callback for pairs (A,B) where 
@@ -185,7 +154,7 @@ namespace PhysicsEngine
 			//trigger onContact callback for this pair of objects
 			pairFlags |= PxPairFlag::eNOTIFY_TOUCH_FOUND;
 			pairFlags |= PxPairFlag::eNOTIFY_TOUCH_LOST;
-//			pairFlags |= PxPairFlag::eNOTIFY_CONTACT_POINTS;
+			pairFlags |= PxPairFlag::eNOTIFY_CONTACT_POINTS;
 		}
 
 		return PxFilterFlags();
@@ -199,6 +168,11 @@ namespace PhysicsEngine
 		MySimulationEventCallback* my_callback;
 		Character* player;
 		Cloth* curtain;
+
+		PxRigidDynamic* treeHouseRB;
+		Cabin* house;
+
+		bool isBroken;
 		
 	public:
 		vector<SZ_Cylinder*> logs;
@@ -226,7 +200,12 @@ namespace PhysicsEngine
 			my_callback = new MySimulationEventCallback();
 			px_scene->setSimulationEventCallback(my_callback);
 
+			PxFilterData groundFilterData;
+			groundFilterData.word0 = FilterGroup::GROUND;
+			groundFilterData.word1 = FilterGroup::HOUSE;
 			plane = new Plane();
+			plane->Name("floor");
+			plane->GetShape()->setSimulationFilterData(groundFilterData);
 
 			plane->Color(PxVec3(39.0f/255.0f, 174.0/255.0f, 96.0f/255.0f));
 			Add(plane);
@@ -238,13 +217,20 @@ namespace PhysicsEngine
 			Tree* tree = new Tree();
 			Add(tree, color_palette[0], Entity::ETree);
 
+			PxFilterData houseFilterData;
+			houseFilterData.word0 = FilterGroup::HOUSE;
+			houseFilterData.word1 = FilterGroup::GROUND;
 
-			Cabin* house = new Cabin(PxTransform(PxVec3(10.0f, 10.0f, 0.f)));
+			house = new Cabin(PxTransform(PxVec3(10.0f, 10.0f, 0.f)));
 			house->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
 			for (int i = 41; i <= 65; ++i)
 			{
 				house->Color(PxVec3(0.2627450980392157f, 0.1568627450980392f, 0.09411764705882353f), i);
 			}
+			house->Name("house");
+			treeHouseRB = house->Get()->is<PxRigidDynamic>();
+
+			house->GetShape()->setSimulationFilterData(houseFilterData);
 
 			Add(house);
 
@@ -256,6 +242,7 @@ namespace PhysicsEngine
 			);
 
 			SZ_Cylinder* branch = new SZ_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
+			branch->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
 			Add(branch);
 
 			FixedJoint* j = new FixedJoint(
@@ -267,6 +254,7 @@ namespace PhysicsEngine
 			j->Get()->setBreakForce(9000000.0f, 9000000.0f);
 
 			SZ_Cylinder* branch1 = new SZ_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
+			branch1->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
 			Add(branch1);
 
 			FixedJoint* j1 = new FixedJoint(
@@ -278,6 +266,7 @@ namespace PhysicsEngine
 			j1->Get()->setBreakForce(210000.0f, 210000.0f);
 
 			SZ_Cylinder* branch2 = new SZ_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
+			branch2->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
 			Add(branch2);
 
 			FixedJoint* j2 = new FixedJoint(
@@ -287,6 +276,31 @@ namespace PhysicsEngine
 				PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(4*(PxPi / 3), PxVec3(0, 0, 1)) * PxQuat(PxPi, PxVec3(0, 0, 1)))
 			);
 			j2->Get()->setBreakForce(210000.0f, 210000.0f);
+		}
+
+		void BreakHouse()
+		{
+			if (!treeHouseRB)
+			{
+				cerr << "Error: treeHouse is null in breakHouse" << endl;
+				return;
+			}
+			if (!treeHouseRB->is<PxRigidDynamic>())
+			{
+				cerr << "Error: treeHouse is not a valid PxRigidDynamic" << endl;
+				return;
+			}
+			std::cout << "BreakHouse()::Breaking House" << std::endl;
+			PxTransform houseTransform = treeHouseRB->getGlobalPose();
+			Remove(house);
+
+			for (int i = 0; i < 5; ++i)
+			{
+				WallSegment* wall = new WallSegment(
+					PxTransform(houseTransform.p + PxVec3((float)(i - 2) * 0.5f, 0.0f, 0.0f))
+				);
+				Add(wall);
+			}
 		}
 
 		void MovePlayerLeft()
@@ -324,6 +338,13 @@ namespace PhysicsEngine
 		//Custom udpate function
 		virtual void CustomUpdate() 
 		{
+
+			if (my_callback->fallen && !isBroken)
+			{
+				std::cout << "the house is totalled" << std::endl;
+				isBroken = true;
+				BreakHouse();
+			}
 		}
 
 		/// An example use of key release handling

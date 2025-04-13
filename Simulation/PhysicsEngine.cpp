@@ -305,6 +305,12 @@ namespace PhysicsEngine
 		px_scene->fetchResults(true);
 	}
 
+	void Scene::Remove(Actor* actor)
+	{
+		if (!actor->Get()) return;
+		px_scene->removeActor(*actor->Get());
+	}
+
 	void Scene::Add(Actor* actor)
 	{
 		px_scene->addActor(*actor->Get());

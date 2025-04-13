@@ -445,8 +445,6 @@ namespace PhysicsEngine {
             PxTransform coreTransform = coreActor->getGlobalPose();
 
             PxVec3 brown(105 / 255.0f, 75 / 255.0f, 55 / 255.0f);
-            PxFilterData branchFilterData;
-            branchFilterData.word0 = 2;
 
             // Define branch rotation angles
             PxReal branchAngles[] = {
@@ -483,7 +481,6 @@ namespace PhysicsEngine {
                     PxTransform(PxVec3(0.0f, (height / 2.5f), 0.0f))
                 );
 
-                branch->GetShape()->setSimulationFilterData(branchFilterData);
                 CreateBranch(branch);
                 parts.push_back(branch);
             }
