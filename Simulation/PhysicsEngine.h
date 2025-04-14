@@ -131,7 +131,7 @@ namespace PhysicsEngine
 		void Update(PxReal dt);
 
 		///User defined update step
-		virtual void CustomUpdate() {}
+		virtual void CustomUpdate(float dt) {}
 
 		///Add actors
 		void Remove(Actor* actor);

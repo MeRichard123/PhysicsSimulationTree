@@ -268,9 +268,17 @@ namespace PhysicsEngine
 		}
 	};
 
+	struct AttachmentInfo {
+		PxU32 vertexIndex;
+		PxRigidActor* target;
+		PxVec3 localOffset;
+	};
+
 	class Cloth : public Actor
 	{
 		PxClothMeshDesc mesh_desc;
+		std::vector<AttachmentInfo> attachments;
+		PxCloth* cloth;
 
 	public:
 		//constructor
@@ -331,6 +339,50 @@ namespace PhysicsEngine
 
 			colors.push_back(default_color);
 			actor->userData = new UserData(&colors.back(), &mesh_desc);
+			cloth = actor->is<PxCloth>();
+		}
+
+		void attach(PxU32 vertexIndex, PxRigidActor* actor, const PxVec3& localOffset = (PxVec3(0, 0, 0)))
+		{
+			AttachmentInfo info;
+			info.vertexIndex = vertexIndex;
+			info.target = actor;
+			info.localOffset = localOffset;
+			attachments.push_back(info);
+
+			PxClothParticleData* data = cloth->lockParticleData(PxDataAccessFlag::eWRITABLE);
+			if (!data)
+			{
+				std::cerr << "Failed to lock cloth particle data!" << std::endl;
+				return;
+			}
+			data->particles[vertexIndex].invWeight = 0.0f;
+			PxTransform actorPose = actor->getGlobalPose();
+			PxVec3 worldPos = actorPose.transform(localOffset);
+			data->particles[vertexIndex].pos = worldPos;
+			data->unlock();
+		}
+
+		void updateAttachments()
+		{
+			// Lock particle data for writing
+			PxClothParticleData* data = cloth->lockParticleData(PxDataAccessFlag::eWRITABLE);
+			if (!data)
+			{
+				std::cerr << "Failed to lock cloth particle data in updateAttachments!" << std::endl;
+				return;
+			}
+
+			// Update positions of attached vertices
+			for (const auto& attach : attachments)
+			{
+				PxTransform actorPose = attach.target->getGlobalPose();
+				PxVec3 worldPos = actorPose.transform(attach.localOffset);
+				data->particles[attach.vertexIndex].pos = worldPos;
+			}
+
+			// Unlock the particle data
+			data->unlock();
 		}
 
 		~Cloth()

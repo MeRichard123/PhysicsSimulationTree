@@ -2,6 +2,7 @@
 
 #include "BasicActors.h"
 #include "CustomActors.h"
+#include "ParticleSystem.h"
 #include "SZ_Cylinder.h"
 #include <iostream>
 #include <iomanip>
@@ -168,10 +169,10 @@ namespace PhysicsEngine
 		MySimulationEventCallback* my_callback;
 		Character* player;
 		Cloth* curtain;
+		Emitter* p;
 
 		PxRigidDynamic* treeHouseRB;
 		Cabin* house;
-
 		bool isBroken;
 		
 	public:
@@ -207,12 +208,20 @@ namespace PhysicsEngine
 			plane->Name("floor");
 			plane->GetShape()->setSimulationFilterData(groundFilterData);
 
-			plane->Color(PxVec3(39.0f/255.0f, 174.0/255.0f, 96.0f/255.0f));
+			plane->Color(PxVec3(39.0f / 255.0f, 174.0 / 255.0f, 96.0f / 255.0f));
 			Add(plane);
 
 			// Specify Height in Meters
-			player = new Character(PxReal(1.75f));
-			Add(player, color_palette[0], Entity::ECharacter);
+			player = new Character(PxTransform(-2.f, 0.0, 0.0), PxReal(1.75f));
+			player->Color(PxVec3(0.1568627450980392f, 0.21176470588235294f, 0.09411764705882353), 0);
+			player->Color(PxVec3(0.8666666666666667f, 0.7215686274509804f, 0.5725490196078431f), 1);
+			player->Color(PxVec3(0.011764705882352941f, 0.01568627450980392f, 0.3686274509803922f), 2);
+			player->Color(PxVec3(0.011764705882352941f, 0.01568627450980392f, 0.3686274509803922f), 3);
+			player->Color(PxVec3(0.1568627450980392f, 0.21176470588235294f, 0.09411764705882353), 4);
+			player->Color(PxVec3(0.1568627450980392f, 0.21176470588235294f, 0.09411764705882353), 5);
+			player->Color(PxVec3(1.0f, 0.29411764705882354f, 0.24313725490196078f), 6);
+			player->Color(PxVec3(0.1803921568627451, 0.19215686274509805f, 0.2196078431372549f), 7);
+			Add(player);
 
 			Tree* tree = new Tree();
 			Add(tree, color_palette[0], Entity::ETree);
@@ -249,7 +258,7 @@ namespace PhysicsEngine
 				tree->getTrunkParts()[tree->getTrunkParts().size() - 1],
 				PxTransform(PxVec3(5.0f, 4.0f, 0.0f)),
 				branch,
-				PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(2*(PxPi/3), PxVec3(1, 0,0)))
+				PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(2 * (PxPi / 3), PxVec3(1, 0, 0)))
 			);
 			j->Get()->setBreakForce(9000000.0f, 9000000.0f);
 
@@ -273,9 +282,16 @@ namespace PhysicsEngine
 				tree->getTrunkParts()[tree->getTrunkParts().size() - 1],
 				PxTransform(PxVec3(5.0f, 1.5f, 0.0f), PxQuat(PxPi, PxVec3(0, 0, 1))),
 				branch2,
-				PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(4*(PxPi / 3), PxVec3(0, 0, 1)) * PxQuat(PxPi, PxVec3(0, 0, 1)))
+				PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(4 * (PxPi / 3), PxVec3(0, 0, 1)) * PxQuat(PxPi, PxVec3(0, 0, 1)))
 			);
 			j2->Get()->setBreakForce(210000.0f, 210000.0f);
+
+			curtain = new Cloth(PxTransform(PxVec3(-4.f, 9.f, 0.f)), PxVec2(2.f, 1.f), 5, 5);
+			//Add(curtain);
+			//curtain->attach(0, treeHouseRB, PxVec3(-5.0f, 0.0, 0.0));
+
+			p = new Emitter(PxTransform(PxVec3(10.0f, 1.f, -.5f), PxQuat(PxPi, PxVec3(0, 1, 0))), PxReal(.5f), 500);
+			Add(p);
 		}
 
 		void BreakHouse()
@@ -294,11 +310,12 @@ namespace PhysicsEngine
 			PxTransform houseTransform = treeHouseRB->getGlobalPose();
 			Remove(house);
 
-			for (int i = 0; i < 5; ++i)
+			for (int i = 0; i < 8; ++i)
 			{
 				WallSegment* wall = new WallSegment(
 					PxTransform(houseTransform.p + PxVec3((float)(i - 2) * 0.5f, 0.0f, 0.0f))
 				);
+				wall->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
 				Add(wall);
 			}
 		}
@@ -306,16 +323,16 @@ namespace PhysicsEngine
 		void MovePlayerLeft()
 		{
 			player->updatePosition(
-				PxVec3(-.5f, 0.0f, 0.0f), 
-				PxQuat(PxPi / 2, PxVec3(0.0f, 1.0f, 0.0f))
+				PxVec3(.5f, 0.0f, 0.0f), 
+				PxQuat(-PxPi / 2, PxVec3(0.0f, 1.0f, 0.0f))
 			);
 		}
 
 		void MovePlayerRight()
 		{
 			player->updatePosition(
-				PxVec3(.5f, 0.0f, 0.0f),
-				PxQuat(-PxPi / 2, PxVec3(0.0f, 1.0f, 0.0f))
+				PxVec3(-.5f, 0.0f, 0.0f),
+				PxQuat(PxPi / 2, PxVec3(0.0f, 1.0f, 0.0f))
 			); 
 		}
 
@@ -336,15 +353,31 @@ namespace PhysicsEngine
 		}
 
 		//Custom udpate function
-		virtual void CustomUpdate() 
+		virtual void CustomUpdate(float dt) 
 		{
-
 			if (my_callback->fallen && !isBroken)
 			{
 				std::cout << "the house is totalled" << std::endl;
 				isBroken = true;
 				BreakHouse();
 			}
+			
+			p->Update(dt);
+
+			for (Particle* part : p->getParticles())
+			{
+				if (!part->inScene)
+				{
+					Add(part);
+					part->inScene = true;
+				}
+			}
+
+			for (Particle* part : p->getDeadParticles())
+			{
+				Remove(part);
+			}
+			p->ClearDeadParticles();
 		}
 
 		/// An example use of key release handling

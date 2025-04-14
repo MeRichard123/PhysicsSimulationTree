@@ -29,6 +29,7 @@
     <ClInclude Include="Extras\Renderer.h" />
     <ClInclude Include="Extras\UserData.h" />
     <ClInclude Include="MyPhysicsEngine.h" />
+    <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="PhysicsEngine.h" />
     <ClInclude Include="SZ_Cylinder.h" />
     <ClInclude Include="VisualDebugger.h" />

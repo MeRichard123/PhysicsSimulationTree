@@ -299,10 +299,10 @@ namespace PhysicsEngine
 		if (pause)
 			return;
 
-		CustomUpdate();
 
 		px_scene->simulate(dt);
 		px_scene->fetchResults(true);
+		CustomUpdate(dt);
 	}
 
 	void Scene::Remove(Actor* actor)
@@ -332,19 +332,6 @@ namespace PhysicsEngine
 			}
 			break;
 		}
-
-		case (Entity::ECharacter): {
-			for (Box* part : ((Character*)person)->GetParts())
-			{
-				part->Color(colour);
-				px_scene->addActor(*part->Get());
-			}
-			Capsule* top_part = ((Character*)person)->GetHead();
-			top_part->Color(colour);
-			px_scene->addActor(*top_part->Get());
-			break;
-		}
-
 		}
 	}
 
