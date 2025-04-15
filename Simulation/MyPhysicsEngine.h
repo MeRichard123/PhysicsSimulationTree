@@ -3,7 +3,7 @@
 #include "BasicActors.h"
 #include "CustomActors.h"
 #include "ParticleSystem.h"
-#include "SZ_Cylinder.h"
+#include "RC_Cylinder.h"
 #include <iostream>
 #include <iomanip>
 #include <random>
@@ -45,23 +45,24 @@ namespace PhysicsEngine
 	{
 		enum Enum
 		{
-			GROUND		= (1 << 0),
-			HOUSE		= (1 << 1),
-			ACTOR2		= (1 << 2)
+			GROUND = (1 << 0),
+			HOUSE  = (1 << 1),
+			PLAYER = (1 << 2),
+			TREE   = (1 << 3),
 			//add more if you need
 		};
 	};
 
 
-	///A customised collision class, implemneting various callbacks
+	///A customised collision class, implementing various callbacks
 	class MySimulationEventCallback : public PxSimulationEventCallback
 	{
 	public:
-		//an example variable that will be checked in the main simulation loop
 		bool trigger;
 		bool fallen;
+		bool chainsawTrigger;
 
-		MySimulationEventCallback() : trigger(false), fallen(false) {}
+		MySimulationEventCallback() : trigger(false), fallen(false), chainsawTrigger(false) {}
 
 		///Method called when the contact with the trigger object is detected.
 		virtual void onTrigger(PxTriggerPair* pairs, PxU32 count) 
@@ -75,14 +76,21 @@ namespace PhysicsEngine
 					//check if eNOTIFY_TOUCH_FOUND trigger
 					if (pairs[i].status & PxPairFlag::eNOTIFY_TOUCH_FOUND)
 					{
-						cerr << "onTrigger::eNOTIFY_TOUCH_FOUND" << endl;
-						trigger = true;
+						if (pairs[i].triggerActor->getName() == "tree_trigger" && pairs[i].otherActor->getName() == "player")
+						{
+							std::cout << "CONTACTTT" << std::endl;
+							cerr << "onTrigger::eNOTIFY_TOUCH_FOUND - chainsaw" << endl;
+							chainsawTrigger = true;
+						}
 					}
 					//check if eNOTIFY_TOUCH_LOST trigger
 					if (pairs[i].status & PxPairFlag::eNOTIFY_TOUCH_LOST)
 					{
-						cerr << "onTrigger::eNOTIFY_TOUCH_LOST" << endl;
-						trigger = false;
+						if (pairs[i].triggerActor->getName() == "tree_trigger" && pairs[i].otherActor->getName() == "player")
+						{
+							cerr << "onTrigger::eNOTIFY_TOUCH_LOST - chainsaw" << endl;
+							chainsawTrigger = true;
+						}
 					}
 				}
 			}
@@ -109,7 +117,7 @@ namespace PhysicsEngine
 						maxImpluse = PxMax(maxImpluse, contactPoints[j].impulse.magnitude());
 					}
 
-
+					std::cout << maxImpluse << std::endl;
 					if (maxImpluse > 0.0f)
 					{
 						fallen = true;
@@ -164,22 +172,26 @@ namespace PhysicsEngine
 	///Custom scene class
 	class MyScene : public Scene
 	{
-		Plane* plane;
-		Box* box, * box2;
-		MySimulationEventCallback* my_callback;
-		Character* player;
-		Cloth* curtain;
-		Emitter* p;
+	private:
+		Plane* m_plane;
+		Box* m_box, *m_box2;
+		Character* m_player;
+		Cloth* m_curtain;
+		Cabin* m_house;
+		Tree* m_tree;
 
-		PxRigidDynamic* treeHouseRB;
-		Cabin* house;
-		bool isBroken;
+		PxRigidDynamic* m_treeHouseRB;
+		Emitter* m_sawdustEmitter;
+		MySimulationEventCallback* my_callback;
+		bool m_isBroken;
+		float m_timeElapsed;
+		bool m_timeStarted;
 		
 	public:
-		vector<SZ_Cylinder*> logs;
+		vector<RC_Cylinder*> logs;
 		//specify your custom filter shader here
 		//PxDefaultSimulationFilterShader by default
-		MyScene() : Scene(CustomFilterShader) {};
+		MyScene() : Scene(CustomFilterShader), m_sawdustEmitter(nullptr) {};
 
 		///A custom scene class
 		void SetVisualisation()
@@ -204,180 +216,225 @@ namespace PhysicsEngine
 			PxFilterData groundFilterData;
 			groundFilterData.word0 = FilterGroup::GROUND;
 			groundFilterData.word1 = FilterGroup::HOUSE;
-			plane = new Plane();
-			plane->Name("floor");
-			plane->GetShape()->setSimulationFilterData(groundFilterData);
+			m_plane = new Plane();
+			m_plane->Name("floor");
+			m_plane->GetShape()->setSimulationFilterData(groundFilterData);
 
-			plane->Color(PxVec3(39.0f / 255.0f, 174.0 / 255.0f, 96.0f / 255.0f));
-			Add(plane);
+			m_plane->Color(PxVec3(39.0f / 255.0f, 174.0 / 255.0f, 96.0f / 255.0f));
+			Add(m_plane);
 
 			// Specify Height in Meters
-			player = new Character(PxTransform(-2.f, 0.0, 0.0), PxReal(1.75f));
-			player->Color(PxVec3(0.1568627450980392f, 0.21176470588235294f, 0.09411764705882353), 0);
-			player->Color(PxVec3(0.8666666666666667f, 0.7215686274509804f, 0.5725490196078431f), 1);
-			player->Color(PxVec3(0.011764705882352941f, 0.01568627450980392f, 0.3686274509803922f), 2);
-			player->Color(PxVec3(0.011764705882352941f, 0.01568627450980392f, 0.3686274509803922f), 3);
-			player->Color(PxVec3(0.1568627450980392f, 0.21176470588235294f, 0.09411764705882353), 4);
-			player->Color(PxVec3(0.1568627450980392f, 0.21176470588235294f, 0.09411764705882353), 5);
-			player->Color(PxVec3(1.0f, 0.29411764705882354f, 0.24313725490196078f), 6);
-			player->Color(PxVec3(0.1803921568627451, 0.19215686274509805f, 0.2196078431372549f), 7);
-			Add(player);
+			m_player = new Character(PxTransform(-2.f, 0.0, 0.0), PxReal(1.75f));
+			PxFilterData playerFilterData;
+			playerFilterData.word0 = FilterGroup::PLAYER;
+			playerFilterData.word1 = FilterGroup::GROUND | FilterGroup::TREE;
+			m_player->Get()->setName("player");
+			m_player->GetShape()->setSimulationFilterData(playerFilterData);
+			m_player->Color(PxVec3(0.1568627450980392f, 0.21176470588235294f, 0.09411764705882353), 0);
+			m_player->Color(PxVec3(0.8666666666666667f, 0.7215686274509804f, 0.5725490196078431f), 1);
+			m_player->Color(PxVec3(0.011764705882352941f, 0.01568627450980392f, 0.3686274509803922f), 2);
+			m_player->Color(PxVec3(0.011764705882352941f, 0.01568627450980392f, 0.3686274509803922f), 3);
+			m_player->Color(PxVec3(0.1568627450980392f, 0.21176470588235294f, 0.09411764705882353), 4);
+			m_player->Color(PxVec3(0.1568627450980392f, 0.21176470588235294f, 0.09411764705882353), 5);
+			m_player->Color(PxVec3(1.0f, 0.29411764705882354f, 0.24313725490196078f), 6);
+			m_player->Color(PxVec3(0.1803921568627451, 0.19215686274509805f, 0.2196078431372549f), 7);
+			Add(m_player);
 
-			Tree* tree = new Tree();
-			Add(tree, color_palette[0], Entity::ETree);
+			m_tree = new Tree();
+			PxFilterData treeFilterData;
+			treeFilterData.word0 = FilterGroup::TREE;
+			treeFilterData.word1 = FilterGroup::PLAYER;
+			std::cout << m_tree->getTrunkParts().size() << std::endl;
+
+			Add(m_tree, color_palette[0], Entity::ETree);
+
+			// Add a Trigger
+			PxPhysics* physics = GetPhysics();
+			if (!physics)
+			{
+				cerr << "Error: GetPhysics() returned null!" << endl;
+				return;
+			}
+			PxRigidDynamic* treeTrigger = GetPhysics()->createRigidDynamic(PxTransform(PxVec3(9.85f, 1.0f, -0.04f)));
+			treeTrigger->setName("tree_trigger");
+			if (!treeTrigger)
+			{
+				cerr << "Error: Failed to create treeTrigger!" << endl;
+				return;
+			}
+			PxMaterial* material = GetMaterial();
+			if (!material)
+			{
+				cerr << "Error: GetMaterial() returned null!" << endl;
+				return;
+			}
+			PxShape* triggerShape = GetPhysics()->createShape(CylinderGeometry(.5f, .2f), *GetMaterial(), true);
+			if (!triggerShape)
+			{
+				cerr << "Error: Failed to create triggerShape!" << endl;
+				treeTrigger->release();
+				return;
+			}
+			triggerShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false);
+			triggerShape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, true);
+			triggerShape->setSimulationFilterData(treeFilterData);
+			treeTrigger->attachShape(*triggerShape);
+			treeTrigger->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+			Add(treeTrigger);
+			triggerShape->release();
+
 
 			PxFilterData houseFilterData;
 			houseFilterData.word0 = FilterGroup::HOUSE;
 			houseFilterData.word1 = FilterGroup::GROUND;
 
-			house = new Cabin(PxTransform(PxVec3(10.0f, 10.0f, 0.f)));
-			house->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
+			m_house = new Cabin(PxTransform(PxVec3(10.0f, 10.0f, 0.f)));
+			m_house->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
 			for (int i = 41; i <= 65; ++i)
 			{
-				house->Color(PxVec3(0.2627450980392157f, 0.1568627450980392f, 0.09411764705882353f), i);
+				m_house->Color(PxVec3(0.2627450980392157f, 0.1568627450980392f, 0.09411764705882353f), i);
 			}
-			house->Name("house");
-			treeHouseRB = house->Get()->is<PxRigidDynamic>();
+			m_house->Name("house");
+			m_treeHouseRB = m_house->Get()->is<PxRigidDynamic>();
 
-			house->GetShape()->setSimulationFilterData(houseFilterData);
+			m_house->GetShape()->setSimulationFilterData(houseFilterData);
 
-			Add(house);
+			Add(m_house);
 
 			FixedJoint* joint = new FixedJoint(
-				tree->getTrunkParts()[tree->getTrunkParts().size() - 1],
+				m_tree->getTrunkParts()[m_tree->getTrunkParts().size() - 1],
 				PxTransform(PxVec3(5.0f, 5.0f, 0)),
-				house,
+				m_house,
 				PxTransform(PxVec3(0, -1.0f, 0))
 			);
 
-			SZ_Cylinder* branch = new SZ_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
-			branch->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
-			Add(branch);
 
-			FixedJoint* j = new FixedJoint(
-				tree->getTrunkParts()[tree->getTrunkParts().size() - 1],
-				PxTransform(PxVec3(5.0f, 4.0f, 0.0f)),
-				branch,
-				PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(2 * (PxPi / 3), PxVec3(1, 0, 0)))
-			);
-			j->Get()->setBreakForce(9000000.0f, 9000000.0f);
-
-			SZ_Cylinder* branch1 = new SZ_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
-			branch1->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
-			Add(branch1);
-
-			FixedJoint* j1 = new FixedJoint(
-				tree->getTrunkParts()[tree->getTrunkParts().size() - 1],
-				PxTransform(PxVec3(5.0f, 3.0f, 0.0f)),
-				branch1,
-				PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(2 * (PxPi / 3), PxVec3(0, 0, 1)))
-			);
-			j1->Get()->setBreakForce(210000.0f, 210000.0f);
-
-			SZ_Cylinder* branch2 = new SZ_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
-			branch2->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
-			Add(branch2);
-
-			FixedJoint* j2 = new FixedJoint(
-				tree->getTrunkParts()[tree->getTrunkParts().size() - 1],
-				PxTransform(PxVec3(5.0f, 1.5f, 0.0f), PxQuat(PxPi, PxVec3(0, 0, 1))),
-				branch2,
-				PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(4 * (PxPi / 3), PxVec3(0, 0, 1)) * PxQuat(PxPi, PxVec3(0, 0, 1)))
-			);
-			j2->Get()->setBreakForce(210000.0f, 210000.0f);
-
-			curtain = new Cloth(PxTransform(PxVec3(-4.f, 9.f, 0.f)), PxVec2(2.f, 1.f), 5, 5);
+			m_curtain = new Cloth(PxTransform(PxVec3(-4.f, 9.f, 0.f)), PxVec2(2.f, 1.f), 5, 5);
 			//Add(curtain);
-			//curtain->attach(0, treeHouseRB, PxVec3(-5.0f, 0.0, 0.0));
-
-			p = new Emitter(PxTransform(PxVec3(10.0f, 1.f, -.5f), PxQuat(PxPi, PxVec3(0, 1, 0))), PxReal(.5f), 500);
-			Add(p);
+			//curtain->attach(0, treeHouseRB, PxVec3(-5.0f, 0.0, 0.0));;
 		}
 
 		void BreakHouse()
 		{
-			if (!treeHouseRB)
+			float logLength = 3.0f;
+			float logRadius = 0.1f;
+			float density = 300.0f;
+			if (!m_treeHouseRB)
 			{
 				cerr << "Error: treeHouse is null in breakHouse" << endl;
 				return;
 			}
-			if (!treeHouseRB->is<PxRigidDynamic>())
+			if (!m_treeHouseRB->is<PxRigidDynamic>())
 			{
 				cerr << "Error: treeHouse is not a valid PxRigidDynamic" << endl;
 				return;
 			}
 			std::cout << "BreakHouse()::Breaking House" << std::endl;
-			PxTransform houseTransform = treeHouseRB->getGlobalPose();
-			Remove(house);
+			PxTransform houseTransform = m_treeHouseRB->getGlobalPose();
+			Remove(m_house);
 
-			for (int i = 0; i < 8; ++i)
+			for (int i = 0; i < 6; ++i)
 			{
 				WallSegment* wall = new WallSegment(
-					PxTransform(houseTransform.p + PxVec3((float)(i - 2) * 0.5f, 0.0f, 0.0f))
+					PxTransform(houseTransform.p + PxVec3((float)(i - 2) * 0.5f, 0.0f, 0.0f)),
+					i % 2 == 0
 				);
 				wall->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
 				Add(wall);
 			}
-		}
+			for (int i = 0; i < 3; ++i)
+			{
+				RoofSegment* roof = new RoofSegment(PxTransform(houseTransform.p + PxVec3((float)(i + 2) * 0.5f, 0.0f, 0.0f)));
+				for (int i = 0; i < 5; ++i)
+				{
+					roof->Color(PxVec3(0.2627450980392157f, 0.1568627450980392f, 0.09411764705882353f), i);
+				}
+				Add(roof);
 
-		void MovePlayerLeft()
-		{
-			player->updatePosition(
-				PxVec3(.5f, 0.0f, 0.0f), 
-				PxQuat(-PxPi / 2, PxVec3(0.0f, 1.0f, 0.0f))
-			);
-		}
+				PxTransform pose = PxTransform(houseTransform.p + PxVec3((float)(i + 7) * 0.5f, 0.0f, 0.0f));
+				RC_Cylinder* log = new RC_Cylinder(pose, logRadius, logLength, density);
+				log->Color(PxVec3(0.2627450980392157f, 0.1568627450980392f, 0.09411764705882353f));
+				Add(log);
+			}
 
-		void MovePlayerRight()
-		{
-			player->updatePosition(
-				PxVec3(-.5f, 0.0f, 0.0f),
-				PxQuat(PxPi / 2, PxVec3(0.0f, 1.0f, 0.0f))
-			); 
-		}
-
-		void MovePlayerUp()
-		{
-			player->updatePosition(
-				PxVec3(0.0f, 0.0f, -0.5f),
-				PxQuat(0.0f, PxVec3(0.0f, 1.0f, 0.0f))
-			);
-		}
-
-		void MovePlayerDown()
-		{
-			player->updatePosition(
-				PxVec3(0.0f, 0.0f, 0.5f), 
-				PxQuat(0.0f, PxVec3(0.0f, 1.0f, 0.0f))
-			); 
+			for (int i = 1; i < 3; ++i)
+			{
+				PxTransform pose = PxTransform(houseTransform.p + PxVec3((float)(i - 5) * 0.5f, 0.0f, 0.0f));
+				RoofSegment* wall = new RoofSegment(pose, 2.0f);
+				wall->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
+				Add(wall);
+				RC_Cylinder* log = new RC_Cylinder(pose, logRadius, logLength - 1.0f, density);
+				log->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
+				Add(log);
+			}
 		}
 
 		//Custom udpate function
 		virtual void CustomUpdate(float dt) 
 		{
-			if (my_callback->fallen && !isBroken)
+			if (my_callback->fallen && !m_isBroken)
 			{
-				std::cout << "the house is totalled" << std::endl;
-				isBroken = true;
+				m_isBroken = true;
 				BreakHouse();
 			}
 			
-			p->Update(dt);
-
-			for (Particle* part : p->getParticles())
+			if (my_callback->chainsawTrigger && m_tree->getTrunkParts().size() > 0)
 			{
-				if (!part->inScene)
+				if (!m_timeStarted)
 				{
-					Add(part);
-					part->inScene = true;
+					std::cout << "Time started" << std::endl;
+					m_timeElapsed = 0;
+					m_timeStarted = true;
+				}
+				else
+				{
+					m_timeElapsed += dt;
+				}
+				PxRigidDynamic* trunk = m_tree->getTrunkParts()[1]->Get()->is<PxRigidDynamic>();
+				PxVec3 forceDir = (trunk->getGlobalPose().p -
+					m_player->Get()->is<PxRigidDynamic>()->getGlobalPose().p).getNormalized();
+				if (!(m_tree->trunkBase->Get()->getConstraintFlags() & PxConstraintFlag::eBROKEN))
+				{
+					trunk->addForce(forceDir * ((20000.0f * m_timeElapsed)), PxForceMode::eIMPULSE);
+					PxVec3 force = forceDir * (20000.0f * m_timeElapsed);
+					std::cout << force.x << " " << force.y << " " << force.z << std::endl;
+
+					if (!m_sawdustEmitter)
+					{
+						PxTransform emitterPos = PxTransform(PxVec3(10.f, 1.0f, -.5f));
+						m_sawdustEmitter = new Emitter(emitterPos, PxReal(.5f), 500);
+						Add(m_sawdustEmitter);
+					}
+					else {
+						PxTransform emitterPos = PxTransform(PxVec3(10.f, 1.0f, -.5f));
+						m_sawdustEmitter->Get()->is<PxRigidDynamic>()->setGlobalPose(emitterPos);
+					}
 				}
 			}
-
-			for (Particle* part : p->getDeadParticles())
+			else if (m_sawdustEmitter)
 			{
-				Remove(part);
+				Remove(m_sawdustEmitter);
+				m_sawdustEmitter = nullptr;
 			}
-			p->ClearDeadParticles();
+
+			if (m_sawdustEmitter)
+			{
+				m_sawdustEmitter->Update(dt);
+
+				for (Particle* part : m_sawdustEmitter->getParticles())
+				{
+					if (!part->inScene)
+					{
+						Add(part);
+						part->inScene = true;
+					}
+				}
+				for (Particle* part : m_sawdustEmitter->getDeadParticles())
+				{
+					Remove(part);
+				}
+				m_sawdustEmitter->ClearDeadParticles();
+			}
 		}
 
 		/// An example use of key release handling
@@ -390,6 +447,38 @@ namespace PhysicsEngine
 		void ExampleKeyPressHandler()
 		{
 			cerr << "I am pressed!" << endl;
+		}
+
+		void MovePlayerLeft()
+		{
+			m_player->updatePosition(
+				PxVec3(.5f, 0.0f, 0.0f),
+				PxQuat(-PxPi / 2, PxVec3(0.0f, 1.0f, 0.0f))
+			);
+		}
+
+		void MovePlayerRight()
+		{
+			m_player->updatePosition(
+				PxVec3(-.5f, 0.0f, 0.0f),
+				PxQuat(PxPi / 2, PxVec3(0.0f, 1.0f, 0.0f))
+			);
+		}
+
+		void MovePlayerUp()
+		{
+			m_player->updatePosition(
+				PxVec3(0.0f, 0.0f, -0.5f),
+				PxQuat(0.0f, PxVec3(0.0f, 1.0f, 0.0f))
+			);
+		}
+
+		void MovePlayerDown()
+		{
+			m_player->updatePosition(
+				PxVec3(0.0f, 0.0f, 0.5f),
+				PxQuat(0.0f, PxVec3(0.0f, 1.0f, 0.0f))
+			);
 		}
 	};
 }

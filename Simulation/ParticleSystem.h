@@ -37,19 +37,20 @@ namespace PhysicsEngine
 
 	class Emitter : public DynamicActor
 	{
-		std::vector<Particle*> particles;
-		std::vector<Particle*> deadParticles;
-		PxTransform pos;
+	private:
+		std::vector<Particle*> m_particles;
+		std::vector<Particle*> m_deadParticles;
+		PxTransform m_pos;
 		
-		PxReal emitRate;
-		int maxParticles;
-		int numEmitted = 0;
+		PxReal m_emitRate;
+		int m_maxParticles;
+		int m_numEmitted = 0;
 
-		float timeSinceLastEmit = 0.0f;
+		float m_timeSinceLastEmit = 0.0f;
 
 	public:
 		Emitter(PxTransform pose, PxReal rate, int maxParticles) 
-			: DynamicActor(pose), pos(pose), emitRate(rate), maxParticles(maxParticles)
+			: DynamicActor(pose), m_pos(pose), m_emitRate(rate), m_maxParticles(maxParticles)
 		{
 			CreateShape(PxBoxGeometry(PxVec3(.01f, .01f, .01f)), 1.0f);
 			SetKinematic(true);
@@ -77,47 +78,47 @@ namespace PhysicsEngine
 			PxVec3 direction = baseDirection + offset;
 			direction.normalize();
 
-			float speed = emitRate * (0.5f + static_cast<float>(rand()) / RAND_MAX);
+			float speed = m_emitRate * (0.5f + static_cast<float>(rand()) / RAND_MAX);
 			particle->AddVelocity(speed * direction);
-			particles.push_back(particle);
-			numEmitted++;
+			m_particles.push_back(particle);
+			m_numEmitted++;
 		}
 
 		std::vector<Particle*> getParticles()
 		{
-			return particles;
+			return m_particles;
 		}
 
 		std::vector<Particle*> getDeadParticles()
 		{
-			return deadParticles;
+			return m_deadParticles;
 		}
 
 		void ClearDeadParticles()
 		{
-			deadParticles.clear();
+			m_deadParticles.clear();
 		}
 
 		void Update(float dt)
 		{
-			timeSinceLastEmit += dt;
+			m_timeSinceLastEmit += dt;
 
-			int emitCount = int(emitRate * timeSinceLastEmit);
+			int emitCount = int(m_emitRate * m_timeSinceLastEmit);
 
-			for (int i = 0; i < emitCount && numEmitted < maxParticles; ++i)
+			for (int i = 0; i < emitCount && m_numEmitted < m_maxParticles; ++i)
 			{
 				emit();
 			}
 
 
-			for (int i = 0; i < particles.size(); ++i)
+			for (int i = 0; i < m_particles.size(); ++i)
 			{
-				Particle* particle = particles[i];
+				Particle* particle = m_particles[i];
 				if (!particle->isDead()) particle->Update();
 				if (particle->isDead())
 				{
-					deadParticles.push_back(particle);
-					particles.erase(particles.begin() + i);
+					m_deadParticles.push_back(particle);
+					m_particles.erase(m_particles.begin() + i);
 				}
 			}
 		}

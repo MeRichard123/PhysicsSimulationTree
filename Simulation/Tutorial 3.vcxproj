@@ -31,17 +31,20 @@
     <ClInclude Include="MyPhysicsEngine.h" />
     <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="PhysicsEngine.h" />
-    <ClInclude Include="SZ_Cylinder.h" />
+    <ClInclude Include="RC_Cylinder.h" />
     <ClInclude Include="VisualDebugger.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="SZ_Cylinder.cpp" />
+    <ClCompile Include="RC_Cylinder.cpp" />
     <ClCompile Include="Extras\Camera.cpp" />
     <ClCompile Include="Extras\GLFontRenderer.cpp" />
     <ClCompile Include="Extras\Renderer.cpp" />
     <ClCompile Include="PhysicsEngine.cpp" />
     <ClCompile Include="VisualDebugger.cpp" />
     <ClCompile Include="Simulation.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{EB5900CB-DC72-42B3-B1FD-445ECC8EFB93}</ProjectGuid>

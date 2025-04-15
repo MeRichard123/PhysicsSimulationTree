@@ -2,29 +2,19 @@
 #include "BasicActors.h"
 #include "PhysicsEngine.h"
 #include "vector"
-#include "SZ_Cylinder.h"
+#include "RC_Cylinder.h"
 #include <iomanip>
 #include <random>
 
 namespace PhysicsEngine {
-    class Chainsaw : public DynamicActor
-    {
-    public:
-        Chainsaw(PxTransform pose = PxTransform(PxIdentity)) : DynamicActor(pose)
-        {
-            CreateShape(PxBoxGeometry(0.2448f, 0.1794f, 0.1794f), 900.0f);
-            CreateShape(PxBoxGeometry(0.4572f, 0.0762f, 0.0127f), 7860.0f);
-            GetShape(1)->setLocalPose(PxTransform(0.6572f, 0, 0));
-        }
-    };
-
     class Character : public DynamicActor {
-    public:
-        PxVec3 pos;
-        Chainsaw* chainsaw;
+    private:
+        PxReal m_height;
+        int m_currentPoseIndex = 0;
 
+    public:
         Character(PxTransform pose = PxTransform(PxIdentity), PxReal height = PxReal(1.75f))
-            : DynamicActor(pose)
+            : DynamicActor(pose), m_height(height)
         {
             PxReal headSize = height / 8.0f;              // Head is 1/8 of total height
             PxReal torsoHeight = headSize * 3.0f;         // Torso is 3 head lengths
@@ -32,25 +22,20 @@ namespace PhysicsEngine {
             PxReal limbWidth = headSize * 0.3f;           // Limb width is 0.3 head lengths
             PxReal armLength = headSize * 3.0f;           // Arm length is 3 head lengths
             PxReal legLength = headSize * 4.0f;           // Leg length is 4 head lengths
-            pos = pose.p;
             
-            // Create torso (main body)
+            // === Create torso (main body) ===
             CreateShape(PxBoxGeometry(PxVec3(torsoHeight / 4, torsoHeight / 2, torsoHeight / 8)), 1.0f);
             GetShape(0)->setLocalPose(PxTransform(PxVec3(0.0f, legLength + (torsoHeight / 2) + 0.01f, 0.0f)));
+
             SetKinematic(true);
 
+            // === Head === 
             CreateShape(PxCapsuleGeometry(headSize / 1.5f, headSize / 3.5f), 1.0f);
             GetShape(1)->setLocalPose(PxTransform(PxVec3(0.0f, legLength + torsoHeight + headSize, 0.0f), PxQuat(PxPi / 2, PxVec3(0, 0, 1))));
 
-
-            // PxVec3(-(torsoHeight / 9), (legLength / 2), 0.0f),
-            //  PxVec3(-(torsoHeight / 9), (legLength / 2) + 0.1f, -.4f), PxQuat(PxPi / 4, PxVec3(1, 0, 0))
+            // === Legs ===
             CreateShape(CylinderGeometry(torsoHeight/10, legLength/2), 1.0f);
-            GetShape(2)->setLocalPose(
-                PxTransform(
-                    PxVec3(- (torsoHeight / 9), (legLength / 2), 0.0f)
-                )
-            );
+            GetShape(2)->setLocalPose(PxTransform(PxVec3(-(torsoHeight / 9), (legLength / 2), 0.0f)));
 
             CreateShape(CylinderGeometry(torsoHeight / 10, legLength / 2), 1.0f);
             GetShape(3)->setLocalPose(
@@ -59,8 +44,7 @@ namespace PhysicsEngine {
                 )
             );
 
-            //PxVec3(pos.x - (torsoHeight / 3), legLength + (torsoHeight*0.6), pos.z - .15f), PxQuat(PxPi/4, PxVec3(1, 0, 0))
-            // PxVec3(pos.x - (torsoHeight / 3), legLength + (torsoHeight * 0.4), pos.z)
+            // === Arms ===
             CreateShape(CylinderGeometry(torsoHeight/12, armLength/2), 1.0f);
             GetShape(4)->setLocalPose(
                 PxTransform(
@@ -77,6 +61,7 @@ namespace PhysicsEngine {
                 )
             );
 
+            // === Chainsaw ===
             CreateShape(PxBoxGeometry(0.2448f, 0.1794f, 0.1794f), 900.0f);
             GetShape(6)->setLocalPose(
                 PxTransform(PxVec3(-0.2, 1.0, -.5), PxQuat(PxPi/2, PxVec3(0,1,0)))
@@ -90,13 +75,30 @@ namespace PhysicsEngine {
 
         void updatePosition(PxVec3& delta, PxQuat& rot)
         {
+            PxReal headSize = m_height / 8.0f;              
+            PxReal torsoHeight = headSize * 3.0f;        
+            PxReal legLength = headSize * 4.0f;       
+            std::vector<PxTransform> legPoses1 = {
+                PxTransform(PxVec3(-(torsoHeight / 9), (legLength / 2), 0.0f)),
+                PxTransform(PxVec3(-(torsoHeight / 9), (legLength / 2) + 0.1f, -.4f), PxQuat(PxPi / 4, PxVec3(1, 0, 0))),
+            };
+            std::vector<PxTransform> logPoses2 = {
+                PxTransform(PxVec3((torsoHeight / 9), (legLength / 2), 0.0f)),
+                PxTransform(PxVec3((torsoHeight / 9), (legLength / 2) + 0.1f, .3f), PxQuat(-(PxPi / 4), PxVec3(1, 0, 0))),
+            };
+
+            PxTransform currentLegPoseLeft = legPoses1[m_currentPoseIndex];
+            PxTransform currentLegPoseRight = logPoses2[m_currentPoseIndex];
+        
             PxTransform currentPose = Get()->is<PxRigidActor>()->getGlobalPose();
             PxVec3 newPosition = currentPose.p + delta;
+            GetShape(2)->setLocalPose(currentLegPoseLeft);
+            GetShape(3)->setLocalPose(currentLegPoseRight);
 
             PxTransform newPos = PxTransform(newPosition, rot);
             Get()->is<PxRigidDynamic>()->setGlobalPose(newPos);
-            pos = newPosition;
-            currentPose = newPos;
+
+            m_currentPoseIndex = (m_currentPoseIndex + 1) % legPoses1.size();
         }
     };
 
@@ -105,9 +107,9 @@ namespace PhysicsEngine {
     public:
         DynamicTreePart(PxTransform pose = PxTransform(PxIdentity), PxReal baseRadius = 2.f, PxReal topRadius = 1.f, PxReal height = 1.f)
             : DynamicActor(pose),
-            verts(GenerateTaperedCylinderVertices(baseRadius, topRadius, height, 16))
+            m_verts(GenerateTaperedCylinderVertices(baseRadius, topRadius, height, 16))
         {
-            PxConvexMesh* convexMesh = CreateConvexMesh(verts);
+            PxConvexMesh* convexMesh = CreateConvexMesh(m_verts);
             if (!convexMesh) throw std::runtime_error("Convex mesh creation failed.");
 
             CreateShape(PxConvexMeshGeometry(convexMesh), 600.0f);
@@ -116,12 +118,12 @@ namespace PhysicsEngine {
 
         PxConvexMeshGeometry GetGeometry()
         {
-            return PxConvexMeshGeometry(convexMesh);
+            return PxConvexMeshGeometry(m_convexMesh);
         }
 
     private:
-        PxConvexMesh* convexMesh = nullptr;
-        std::vector<PxVec3> verts;
+        PxConvexMesh* m_convexMesh = nullptr;
+        std::vector<PxVec3> m_verts;
 
         std::vector<PxVec3> GenerateTaperedCylinderVertices(PxReal baseRadius, PxReal topRadius, PxReal height, int numSides)
         {
@@ -170,45 +172,45 @@ namespace PhysicsEngine {
 
     class Tree : public DynamicActor
     {
+    private:
+        vector<DynamicTreePart*> m_trunkParts;
+        vector<RC_Cylinder*> m_parts;
     public:
         DynamicTreePart* treeBase;
+        FixedJoint* trunkBase;
         float bottomRad = 1.0;
         float topRad = bottomRad /= 1.5;
         float posY = 0.3;
         PxReal density = PxReal(600.0f);
 
         float height = 8.0f;
-        vector<DynamicTreePart*> trunkParts = { 0 };
-        vector<Box*> parts;
-        Box* core;
 
         Tree(PxTransform pose = PxTransform(PxIdentity))
             : DynamicActor(pose)
         {
-            core = new Box(PxTransform(PxVec3(18.f, height + (topRad * 2), 0.f)), PxVec3(topRad, topRad, topRad));
             treeBase = new DynamicTreePart(PxTransform(PxVec3(5.f, posY, 0.f)), bottomRad, topRad, 1.25f);
             treeBase->SetKinematic(true);
             treeBase->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));  // Brown color (105,75,55)
             
-            trunkParts.push_back(treeBase);
+            m_trunkParts.push_back(treeBase);
 
             CreateTrunk();
 
-            //AddJoints();
-            //AddBranches();
+            AddBranches();
         }
 
-        vector<Box*> getParts()
+        vector<RC_Cylinder*> getParts()
         {
-            return parts;
+            return m_parts;
         }
 
         vector<DynamicTreePart*> getTrunkParts()
         {
-            return trunkParts;
+            return m_trunkParts;
         }
 
         void CreateBranch(Box* branch, int depth = 0, int side = -1) {
+#if 0
             random_device rd;
             mt19937 gen(rd());
 
@@ -248,7 +250,7 @@ namespace PhysicsEngine {
             );
 
 
-            parts.push_back(b);
+            m_parts.push_back(b);
 
             depth++;
             side *= -1;
@@ -256,6 +258,7 @@ namespace PhysicsEngine {
             CreateBranch(b, depth, side);
             CreateBranch(b, depth, side);
             //}
+#endif
         }
 
         void CreateTrunk()
@@ -267,77 +270,56 @@ namespace PhysicsEngine {
             bottomRad= topRad;
             DynamicTreePart* trunk = new DynamicTreePart(PxTransform(PxVec3(5.f, posY, 0.f)), bottomRad, topPoint, trunkHeight);
             trunk->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));  // Brown color (105,75,55)
-            trunkParts.push_back(trunk);
+            m_trunkParts.push_back(trunk);
 
 
-            FixedJoint* trunkBase = new FixedJoint(
+            trunkBase = new FixedJoint(
                 treeBase,
                 PxTransform(PxVec3(5.0f, 1.0f, 0.0f)),
                 trunk,
                 PxTransform(5.0f, -trunkHeight/8 - 0.27f, 0.0f)
             );
-            trunkBase->Get()->setBreakForce(1000000.0f, 1000000.0f);
-        }
-
-        void AddJoints()
-        {
-            FixedJoint* tree_core = new FixedJoint(
-                trunkParts[trunkParts.size() - 1],
-                PxTransform(PxVec3(0.0f, 1.25f / 2.0f, 0.0f)), // Local offset from the sphere
-                core,
-                PxTransform(PxVec3(0.0f, -topRad, 0.0f))
-            );
+            trunkBase->Get()->setBreakForce(30000000.0f,30000000.0f);
         }
 
         void AddBranches()
         {
-            float branchAngleStep = (2 * PxPi) / 4; // 90-degrees
-            PxReal angle = 0 * branchAngleStep;
-            topRad += 0.01f;
+            RC_Cylinder* branch = new RC_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
+            branch->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
 
-            PxRigidActor* coreActor = static_cast<PxRigidActor*>(core->Get());
-            PxTransform coreTransform = coreActor->getGlobalPose();
+            FixedJoint* j = new FixedJoint(
+                getTrunkParts()[getTrunkParts().size() - 1],
+                PxTransform(PxVec3(5.0f, 4.0f, 0.0f)),
+                branch,
+                PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(2 * (PxPi / 3), PxVec3(1, 0, 0)))
+            );
+            j->Get()->setBreakForce(9000000.0f, 9000000.0f);
+            m_parts.push_back(branch);
 
-            PxVec3 brown(105 / 255.0f, 75 / 255.0f, 55 / 255.0f);
 
-            // Define branch rotation angles
-            PxReal branchAngles[] = {
-                PxPi / 2,
-                (3 * PxPi) / 2,
-                (3 * PxPi) / 2,
-                PxPi / 2
-            };
+            RC_Cylinder* branch1 = new RC_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
+            branch1->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
 
-            // Define branch positions
-            PxVec3 branchPositions[] = {
-                PxVec3(topRad, 0.0f, 0.0f),
-                PxVec3(-topRad, 0.0f, 0.0f),
-                PxVec3(0.0f, 0.0f, topRad),
-                PxVec3(0.0f, 0.0f, -topRad)
-            };
+            FixedJoint* j1 = new FixedJoint(
+                getTrunkParts()[getTrunkParts().size() - 1],
+                PxTransform(PxVec3(5.0f, 3.0f, 0.0f)),
+                branch1,
+                PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(2 * (PxPi / 3), PxVec3(0, 0, 1)))
+            );
+            j1->Get()->setBreakForce(210000.0f, 210000.0f);
+            m_parts.push_back(branch1);
 
-            for (int i = 0; i < 4; i++) {
-                Box* branch = new Box(
-                    coreTransform,
-                    PxVec3(topRad / 3, height / 2.5, topRad / 3));
-                branch->Color(brown);
-                PxMaterial* wood = CreateMaterial(PxReal(0.4), PxReal(0.6), PxReal(0.7));
-                branch->Material(wood);
+            RC_Cylinder* branch2 = new RC_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
+            branch2->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
 
-                PxQuat horizontalRotation = PxQuat(branchAngles[i], PxVec3((i < 2) ? 0 : 1, 0, (i < 2) ? 1 : 0));
-                PxQuat yRotation = PxQuat(angle, PxVec3(0, 1, 0));
-                PxQuat finalRotation = yRotation * horizontalRotation;
-
-                FixedJoint* branch_joint = new FixedJoint(
-                    core,
-                    PxTransform(branchPositions[i], finalRotation),
-                    branch,
-                    PxTransform(PxVec3(0.0f, (height / 2.5f), 0.0f))
-                );
-
-                CreateBranch(branch);
-                parts.push_back(branch);
-            }
+            FixedJoint* j2 = new FixedJoint(
+                getTrunkParts()[getTrunkParts().size() - 1],
+                PxTransform(PxVec3(5.0f, 1.5f, 0.0f), PxQuat(PxPi, PxVec3(0, 0, 1))),
+                branch2,
+                PxTransform(PxVec3(0.0f, 2.3f, 0.0f), PxQuat(4 * (PxPi / 3), PxVec3(0, 0, 1)) * PxQuat(PxPi, PxVec3(0, 0, 1)))
+            );
+            j2->Get()->setBreakForce(210000.0f, 210000.0f);
+            m_parts.push_back(branch2);
         }
     };
 
@@ -349,7 +331,7 @@ namespace PhysicsEngine {
         {
             float radius = 0.1f;
             float halfHeight = 1.0f;
-            float density = 10.0f;
+            float density = 300.0f;
             float diameter = radius * 2;
             float quarter = halfHeight / 4;
 
@@ -424,7 +406,7 @@ namespace PhysicsEngine {
             float windowHeight = .5f;
             float logDiameter = logRadius * 2.f;
             float floorThickness = 0.01f;
-            float density = 10.0f;
+            float density = 300.0f;
 
 
             PxVec3 floorLocalPos(0, floorThickness / 2.f, 0);
@@ -744,10 +726,20 @@ namespace PhysicsEngine {
             );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(51)->setLocalPose(PxTransform(PxVec3((logLength / 2 - logRadius) - logDiameter, logDiameter * 10 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(51)->setLocalPose(
+                PxTransform(
+                    PxVec3((logLength / 2 - logRadius) - logDiameter, logDiameter * 10 + logRadius, 0), 
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(52)->setLocalPose(PxTransform(PxVec3(-1 * (logLength / 2 - logRadius - logDiameter), logDiameter * 10 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(52)->setLocalPose(
+                PxTransform(
+                    PxVec3(-1 * (logLength / 2 - logRadius - logDiameter), logDiameter * 10 + logRadius, 0), 
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             // Layer 13
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal((logLength / 2) - ((logLength / 2) * 0.4f))), density);
@@ -767,37 +759,92 @@ namespace PhysicsEngine {
             );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(55)->setLocalPose(PxTransform(PxVec3((logLength / 2 - logRadius) - (2*logDiameter), logDiameter * 11 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(55)->setLocalPose(
+                PxTransform(
+                    PxVec3((logLength / 2 - logRadius) - (2*logDiameter), logDiameter * 11 + logRadius, 0),
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(56)->setLocalPose(PxTransform(PxVec3(-1 * (logLength / 2 - logRadius - (2*logDiameter)), logDiameter * 11 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(56)->setLocalPose(
+                PxTransform(
+                    PxVec3(-1 * (logLength / 2 - logRadius - (2*logDiameter)), logDiameter * 11 + logRadius, 0), 
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(57)->setLocalPose(PxTransform(PxVec3((logLength / 2 - logRadius) - (3 * logDiameter), logDiameter * 12 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(57)->setLocalPose(
+                PxTransform(
+                    PxVec3((logLength / 2 - logRadius) - (3 * logDiameter), logDiameter * 12 + logRadius, 0), 
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(58)->setLocalPose(PxTransform(PxVec3((logLength / 2 - logRadius) - (4 * logDiameter), logDiameter * 12 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(58)->setLocalPose(
+                PxTransform(
+                    PxVec3((logLength / 2 - logRadius) - (4 * logDiameter), logDiameter * 12 + logRadius, 0), 
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(59)->setLocalPose(PxTransform(PxVec3((logLength / 2 - logRadius) - (5 * logDiameter), logDiameter * 12 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(59)->setLocalPose(
+                PxTransform(
+                    PxVec3((logLength / 2 - logRadius) - (5 * logDiameter), logDiameter * 12 + logRadius, 0), 
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(60)->setLocalPose(PxTransform(PxVec3((logLength / 2 - logRadius) - (6 * logDiameter), logDiameter * 12 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(60)->setLocalPose(
+                PxTransform(
+                    PxVec3((logLength / 2 - logRadius) - (6 * logDiameter), logDiameter * 12 + logRadius, 0), 
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(61)->setLocalPose(PxTransform(PxVec3(-1 * (logLength / 2 - logRadius - (7 * logDiameter)), logDiameter * 12 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(61)->setLocalPose(
+                PxTransform(
+                    PxVec3(-1 * (logLength / 2 - logRadius - (7 * logDiameter)), logDiameter * 12 + logRadius, 0), 
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(62)->setLocalPose(PxTransform(PxVec3((logLength / 2 - logRadius) - (8 * logDiameter), logDiameter * 12 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(62)->setLocalPose(
+                PxTransform(
+                    PxVec3((logLength / 2 - logRadius) - (8 * logDiameter), logDiameter * 12 + logRadius, 0),
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(63)->setLocalPose(PxTransform(PxVec3((logLength / 2 - logRadius) - (9 * logDiameter), logDiameter * 12 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(63)->setLocalPose(
+                PxTransform(
+                    PxVec3((logLength / 2 - logRadius) - (9 * logDiameter), logDiameter * 12 + logRadius, 0),
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(64)->setLocalPose(PxTransform(PxVec3((logLength / 2 - logRadius) - (10 * logDiameter), logDiameter * 12 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(64)->setLocalPose(
+                PxTransform(
+                    PxVec3((logLength / 2 - logRadius) - (10 * logDiameter), logDiameter * 12 + logRadius, 0), 
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
 
             CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength / 2)), density);
-            GetShape(65)->setLocalPose(PxTransform(PxVec3((logLength / 2 - logRadius) - (11 * logDiameter), logDiameter * 12 + logRadius, 0), PxQuat(PxPi / 2, PxVec3(1, 0, 0))));
+            GetShape(65)->setLocalPose(
+                PxTransform(
+                    PxVec3((logLength / 2 - logRadius) - (11 * logDiameter), logDiameter * 12 + logRadius, 0), 
+                    PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+                )
+            );
         }
 
         vector<WallSegment*> GetLogs()
@@ -811,5 +858,33 @@ namespace PhysicsEngine {
         }
     };
 
+    class RoofSegment : public DynamicActor
+    {
+    public:
+        RoofSegment(PxTransform pose = PxTransform(PxIdentity), float length = 3.0f)
+            : DynamicActor(pose)
+        {
+            float logLength = length;
+            float logRadius = 0.1f;
+            float spacing = logRadius * 2.f;
+            float logGap = 0.01f;
+            float windowWidth = .2f;
+            float windowHeight = .5f;
+            float logDiameter = logRadius * 2.f;
+            float floorThickness = 0.01f;
+            float density = 300.0f;
 
+            CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength)), density);
+            CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength)), density);
+            CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength)), density);
+            CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength)), density);
+            CreateShape(CylinderGeometry(PxReal(logRadius), PxReal(logLength)), density);
+
+
+            GetShape(1)->setLocalPose(PxTransform(PxVec3(logDiameter + logGap, 0, 0)));
+            GetShape(2)->setLocalPose(PxTransform(PxVec3((2 * logDiameter) + logGap, 0, 0)));
+            GetShape(3)->setLocalPose(PxTransform(PxVec3((3 * logDiameter) + logGap, 0, 0)));
+            GetShape(4)->setLocalPose(PxTransform(PxVec3((4 * logDiameter) + logGap, 0, 0)));
+        }
+    };
 }

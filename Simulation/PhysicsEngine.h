@@ -135,6 +135,7 @@ namespace PhysicsEngine
 
 		///Add actors
 		void Remove(Actor* actor);
+		void Add(PxRigidDynamic* actor);
 		void Add(Actor* actor);
 		void Add(DynamicActor* person, PxVec3 colour, Entity entity);
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "SZ_Cylinder.h"
+#include "RC_Cylinder.h"
 
 namespace PhysicsEngine {
 
@@ -19,7 +19,7 @@ namespace PhysicsEngine {
 	}
 
 
-	PxConvexMesh* SZ_Cylinder::CreateConvexCylinder(PxReal radius, PxReal halfHeight, int slices)
+	PxConvexMesh* RC_Cylinder::CreateConvexCylinder(PxReal radius, PxReal halfHeight, int slices)
 	{
 		auto verts = GenerateCylinderVertices(radius, halfHeight, slices);
 
@@ -38,17 +38,17 @@ namespace PhysicsEngine {
 	}
 
 
-	SZ_Cylinder::SZ_Cylinder(const PxTransform& pose, PxReal radius, PxReal halfHeight, PxReal density)
-		: DynamicActor(pose), radius(radius), halfHeight(halfHeight)
+	RC_Cylinder::RC_Cylinder(const PxTransform& pose, PxReal radius, PxReal halfHeight, PxReal density)
+		: DynamicActor(pose), m_radius(radius), m_halfHeight(halfHeight)
 	{
-		PxConvexMesh* mesh = SZ_Cylinder::CreateConvexCylinder(radius, halfHeight);
+		PxConvexMesh* mesh = RC_Cylinder::CreateConvexCylinder(radius, halfHeight);
 		if (mesh) {
 			PxConvexMeshGeometry geom(mesh);
 			CreateShape(geom, density);
 		}
 	}
 
-	void SZ_Cylinder::Render()
+	void RC_Cylinder::Render()
 	{
 		PxTransform pose = ((PxRigidBody*)Get())->getGlobalPose();
 		PxMat44 shapePose(pose);
@@ -59,7 +59,7 @@ namespace PhysicsEngine {
 
 		glPushMatrix();
 		glMultMatrixf((float*)&shapePose);
-		glTranslatef(0.0f, halfHeight, 0.f);
+		glTranslatef(0.0f, m_halfHeight, 0.f);
 		glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
 
 
@@ -67,7 +67,7 @@ namespace PhysicsEngine {
 		// Cylinder body
 		GLUquadric* qobj = gluNewQuadric();
 		gluQuadricNormals(qobj, GLU_SMOOTH);
-		gluCylinder(qobj, radius, radius, halfHeight * 2.f, 64, 32);
+		gluCylinder(qobj, m_radius, m_radius, m_halfHeight * 2.f, 64, 32);
 		gluDeleteQuadric(qobj);
 
 		glPopMatrix();

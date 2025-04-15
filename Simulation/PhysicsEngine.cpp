@@ -311,6 +311,11 @@ namespace PhysicsEngine
 		px_scene->removeActor(*actor->Get());
 	}
 
+	void Scene::Add(PxRigidDynamic* actor)
+	{
+		px_scene->addActor(*actor);
+	}
+
 	void Scene::Add(Actor* actor)
 	{
 		px_scene->addActor(*actor->Get());
@@ -326,7 +331,7 @@ namespace PhysicsEngine
 				if (part) px_scene->addActor(*part->Get());
 			}
 
-			for (Box* part : ((Tree*)person)->getParts())
+			for (RC_Cylinder* part : ((Tree*)person)->getParts())
 			{
 				if (part) px_scene->addActor(*part->Get());
 			}
