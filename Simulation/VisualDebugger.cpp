@@ -174,7 +174,6 @@ namespace VisualDebugger
 	//user defined keyboard handlers
 	void UserKeyPress(int key)
 	{
-		std::cout << toupper(key) << std::endl;
 		switch (toupper(key))
 		{
 		//implement your own

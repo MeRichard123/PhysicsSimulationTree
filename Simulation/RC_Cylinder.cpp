@@ -24,6 +24,12 @@ namespace PhysicsEngine {
 		auto verts = GenerateCylinderVertices(radius, halfHeight, slices);
 
 		PxConvexMeshDesc desc;
+			
+		// make sure we can fit into a PxU32 because we static_cast 
+		if (verts.size() > std::numeric_limits<PxU32>::max()) {
+			return nullptr;
+		}
+
 		desc.points.count = static_cast<PxU32>(verts.size());
 		desc.points.stride = sizeof(PxVec3);
 		desc.points.data = verts.data();

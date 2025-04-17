@@ -224,7 +224,7 @@ namespace PhysicsEngine
 			Add(m_plane);
 
 			// Specify Height in Meters
-			m_player = new Character(PxTransform(-2.f, 0.0, 0.0), PxReal(1.75f));
+			m_player = new Character(PxTransform(-2.f, 0.0, -.5), PxReal(1.75f));
 			PxFilterData playerFilterData;
 			playerFilterData.word0 = FilterGroup::PLAYER;
 			playerFilterData.word1 = FilterGroup::GROUND | FilterGroup::TREE;
@@ -309,9 +309,8 @@ namespace PhysicsEngine
 			);
 
 
-			m_curtain = new Cloth(PxTransform(PxVec3(-4.f, 9.f, 0.f)), PxVec2(2.f, 1.f), 5, 5);
-			//Add(curtain);
-			//curtain->attach(0, treeHouseRB, PxVec3(-5.0f, 0.0, 0.0));;
+			m_curtain = new Cloth(PxTransform(PxVec3(9.f, 10.f, -1.5f)), PxVec2(2.f, 1.f), 5, 5);
+			Add(m_curtain);
 		}
 
 		void BreakHouse()
@@ -344,7 +343,11 @@ namespace PhysicsEngine
 			}
 			for (int i = 0; i < 3; ++i)
 			{
-				RoofSegment* roof = new RoofSegment(PxTransform(houseTransform.p + PxVec3((float)(i + 2) * 0.5f, 0.0f, 0.0f)));
+				RoofSegment* roof = new RoofSegment(
+					PxTransform(
+						houseTransform.p + PxVec3((float)(i + 2) * 0.5f, 0.0f, 0.0f), 
+						PxQuat(PxPi/2, PxVec3(0, 0 ,1)) * PxQuat(PxPi/2, PxVec3(1, 0, 0))
+					));
 				for (int i = 0; i < 5; ++i)
 				{
 					roof->Color(PxVec3(0.2627450980392157f, 0.1568627450980392f, 0.09411764705882353f), i);
@@ -359,7 +362,10 @@ namespace PhysicsEngine
 
 			for (int i = 1; i < 3; ++i)
 			{
-				PxTransform pose = PxTransform(houseTransform.p + PxVec3((float)(i - 5) * 0.5f, 0.0f, 0.0f));
+				PxTransform pose = PxTransform(
+					houseTransform.p + PxVec3((float)(i - 5), 0.0f, 0.0f),
+					PxQuat(PxPi / 2, PxVec3(0, 0, 1)) * PxQuat(PxPi / 2, PxVec3(1, 0, 0))
+				);
 				RoofSegment* wall = new RoofSegment(pose, 2.0f);
 				wall->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
 				Add(wall);
@@ -382,7 +388,6 @@ namespace PhysicsEngine
 			{
 				if (!m_timeStarted)
 				{
-					std::cout << "Time started" << std::endl;
 					m_timeElapsed = 0;
 					m_timeStarted = true;
 				}
@@ -396,8 +401,7 @@ namespace PhysicsEngine
 				if (!(m_tree->trunkBase->Get()->getConstraintFlags() & PxConstraintFlag::eBROKEN))
 				{
 					trunk->addForce(forceDir * ((20000.0f * m_timeElapsed)), PxForceMode::eIMPULSE);
-					PxVec3 force = forceDir * (20000.0f * m_timeElapsed);
-					std::cout << force.x << " " << force.y << " " << force.z << std::endl;
+					PxVec3 force = -forceDir * (20000.0f * m_timeElapsed);
 
 					if (!m_sawdustEmitter)
 					{

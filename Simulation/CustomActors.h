@@ -156,6 +156,11 @@ namespace PhysicsEngine {
         PxConvexMesh* CreateConvexMesh(const std::vector<PxVec3>& vertices)
         {
             PxConvexMeshDesc convexDesc;
+
+            if (vertices.size() > std::numeric_limits<PxU32>::max()) {
+                return nullptr;
+            }
+
             convexDesc.points.count = static_cast<PxU32>(vertices.size());
             convexDesc.points.stride = sizeof(PxVec3);
             convexDesc.points.data = vertices.data();
