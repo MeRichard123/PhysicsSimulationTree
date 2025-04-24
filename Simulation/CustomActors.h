@@ -192,7 +192,8 @@ namespace PhysicsEngine {
         PxReal density = PxReal(600.0f);
 
         float height = 8.0f;
-        PxMaterial* wood = CreateMaterial(PxReal(0.1f), PxReal(0.1f), PxReal(0.1f));
+        PxMaterial* wood = CreateMaterial(PxReal(0.54f), PxReal(0.32f), PxReal(0.1f));
+
 
         Tree(PxTransform pose = PxTransform(PxIdentity))
             : DynamicActor(pose)

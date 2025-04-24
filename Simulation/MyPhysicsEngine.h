@@ -189,8 +189,8 @@ namespace PhysicsEngine
 		
 	public:
 		vector<RC_Cylinder*> logs;
-		// https://walberla.net/doxygen/classwalberla_1_1pe_1_1Oak.html
-		PxMaterial* wood = CreateMaterial(PxReal(0.1f), PxReal(0.1f), PxReal(0.1f));
+		// https://www.engineeringtoolbox.com/friction-coefficients-d_778.html
+		PxMaterial* wood = CreateMaterial(PxReal(0.54f), PxReal(0.32f), PxReal(0.1f));
 		//specify your custom filter shader here
 		//PxDefaultSimulationFilterShader by default
 		MyScene() : Scene(CustomFilterShader), m_sawdustEmitter(nullptr) {};
