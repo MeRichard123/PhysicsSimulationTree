@@ -112,6 +112,9 @@ namespace PhysicsEngine {
             PxConvexMesh* convexMesh = CreateConvexMesh(m_verts);
             if (!convexMesh) throw std::runtime_error("Convex mesh creation failed.");
 
+            /*
+                600 Kg/m^2
+            */
             CreateShape(PxConvexMeshGeometry(convexMesh), 600.0f);
             GetShape(0)->setLocalPose(pose);
         }
@@ -189,6 +192,7 @@ namespace PhysicsEngine {
         PxReal density = PxReal(600.0f);
 
         float height = 8.0f;
+        PxMaterial* wood = CreateMaterial(PxReal(0.1f), PxReal(0.1f), PxReal(0.1f));
 
         Tree(PxTransform pose = PxTransform(PxIdentity))
             : DynamicActor(pose)
@@ -196,7 +200,8 @@ namespace PhysicsEngine {
             treeBase = new DynamicTreePart(PxTransform(PxVec3(5.f, posY, 0.f)), bottomRad, topRad, 1.25f);
             treeBase->SetKinematic(true);
             treeBase->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));  // Brown color (105,75,55)
-            
+            treeBase->Material(wood);
+    
             m_trunkParts.push_back(treeBase);
 
             CreateTrunk();
@@ -214,57 +219,6 @@ namespace PhysicsEngine {
             return m_trunkParts;
         }
 
-        void CreateBranch(Box* branch, int depth = 0, int side = -1) {
-#if 0
-            random_device rd;
-            mt19937 gen(rd());
-
-            if (depth == 2) return;
-
-            //for (int i = 0; i < 2; ++i) {
-
-                //std::uniform_real_distribution<float> angleDist(PxPi / 8, PxPi / 2);
-                //std::uniform_real_distribution<float> axisDist(-1.0f, 1.0f);
-
-            PxVec3 dims = branch->GetShape()->getGeometry().box().halfExtents;
-            PxTransform pos = branch->GetShape()->getLocalPose();
-
-            //PxVec3 randomAxis(axisDist(gen), axisDist(gen), axisDist(gen));
-            //randomAxis.normalize();
-
-            Box* b = new Box(pos, PxVec3(dims.x / 2, dims.y / 2, dims.z / 2));
-            b->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
-
-            std::uniform_real_distribution<float> posFactorDist(-dims.y + 0.01, dims.y);
-
-            //float randomAngle = angleDist(gen);
-
-            int posParentBranch = posFactorDist(gen);
-            float outwardOffset = dims.x * 1.5f;
-
-            PxReal angle = (PxPi) / 4;
-
-            PxQuat rotation = PxQuat(side * angle, PxVec3(1, 0, 0));
-            PxQuat flip = PxQuat(PxPi, PxVec3(1, 0, 0));
-
-            FixedJoint* j = new FixedJoint(
-                branch,
-                PxTransform(PxVec3(outwardOffset, posParentBranch, dims.z), rotation),
-                b,
-                PxTransform(PxVec3(dims.x / 2, dims.y / 2, dims.z), flip)
-            );
-
-
-            m_parts.push_back(b);
-
-            depth++;
-            side *= -1;
-
-            CreateBranch(b, depth, side);
-            CreateBranch(b, depth, side);
-            //}
-#endif
-        }
 
         void CreateTrunk()
         {
@@ -276,6 +230,7 @@ namespace PhysicsEngine {
             DynamicTreePart* trunk = new DynamicTreePart(PxTransform(PxVec3(5.f, posY, 0.f)), bottomRad, topPoint, trunkHeight);
             trunk->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));  // Brown color (105,75,55)
             m_trunkParts.push_back(trunk);
+            trunk->Material(wood);
 
 
             trunkBase = new FixedJoint(
@@ -291,6 +246,7 @@ namespace PhysicsEngine {
         {
             RC_Cylinder* branch = new RC_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
             branch->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
+            branch->Material(wood);
 
             FixedJoint* j = new FixedJoint(
                 getTrunkParts()[getTrunkParts().size() - 1],
@@ -304,6 +260,7 @@ namespace PhysicsEngine {
 
             RC_Cylinder* branch1 = new RC_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
             branch1->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
+            branch1->Material(wood);
 
             FixedJoint* j1 = new FixedJoint(
                 getTrunkParts()[getTrunkParts().size() - 1],
@@ -316,6 +273,7 @@ namespace PhysicsEngine {
 
             RC_Cylinder* branch2 = new RC_Cylinder(PxTransform(PxVec3(0.0f, 0.0f, 0.0f)), PxReal(0.1), PxReal(2.3), PxReal(10.0f));
             branch2->Color(PxVec3(105 / 255.0f, 75 / 255.0f, 55 / 255.0f));
+            branch2->Material(wood);
 
             FixedJoint* j2 = new FixedJoint(
                 getTrunkParts()[getTrunkParts().size() - 1],

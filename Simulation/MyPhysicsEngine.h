@@ -189,6 +189,8 @@ namespace PhysicsEngine
 		
 	public:
 		vector<RC_Cylinder*> logs;
+		// https://walberla.net/doxygen/classwalberla_1_1pe_1_1Oak.html
+		PxMaterial* wood = CreateMaterial(PxReal(0.1f), PxReal(0.1f), PxReal(0.1f));
 		//specify your custom filter shader here
 		//PxDefaultSimulationFilterShader by default
 		MyScene() : Scene(CustomFilterShader), m_sawdustEmitter(nullptr) {};
@@ -244,7 +246,6 @@ namespace PhysicsEngine
 			PxFilterData treeFilterData;
 			treeFilterData.word0 = FilterGroup::TREE;
 			treeFilterData.word1 = FilterGroup::PLAYER;
-			std::cout << m_tree->getTrunkParts().size() << std::endl;
 
 			Add(m_tree, color_palette[0], Entity::ETree);
 
@@ -289,6 +290,7 @@ namespace PhysicsEngine
 			houseFilterData.word1 = FilterGroup::GROUND;
 
 			m_house = new Cabin(PxTransform(PxVec3(10.0f, 10.0f, 0.f)));
+			m_house->Material(wood);
 			m_house->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
 			for (int i = 41; i <= 65; ++i)
 			{
@@ -339,6 +341,7 @@ namespace PhysicsEngine
 					i % 2 == 0
 				);
 				wall->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
+				wall->Material(wood);
 				Add(wall);
 			}
 			for (int i = 0; i < 3; ++i)
@@ -352,11 +355,13 @@ namespace PhysicsEngine
 				{
 					roof->Color(PxVec3(0.2627450980392157f, 0.1568627450980392f, 0.09411764705882353f), i);
 				}
+				roof->Material(wood);
 				Add(roof);
 
 				PxTransform pose = PxTransform(houseTransform.p + PxVec3((float)(i + 7) * 0.5f, 0.0f, 0.0f));
 				RC_Cylinder* log = new RC_Cylinder(pose, logRadius, logLength, density);
 				log->Color(PxVec3(0.2627450980392157f, 0.1568627450980392f, 0.09411764705882353f));
+				log->Material(wood);
 				Add(log);
 			}
 
@@ -368,9 +373,11 @@ namespace PhysicsEngine
 				);
 				RoofSegment* wall = new RoofSegment(pose, 2.0f);
 				wall->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
+				wall->Material(wood);
 				Add(wall);
 				RC_Cylinder* log = new RC_Cylinder(pose, logRadius, logLength - 1.0f, density);
 				log->Color(PxVec3(0.6f, 0.34509803921568627f, 0.16470588235294117f));
+				log->Material(wood);
 				Add(log);
 			}
 		}
